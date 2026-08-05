@@ -1,0 +1,7 @@
+{
+  "name": "Burhani Infotech Service & Inventory Management",
+  "description": "Complete ERP & Business Management application for computer, printer, CCTV, networking sales, repairs, billing, warranty, and customer service.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
