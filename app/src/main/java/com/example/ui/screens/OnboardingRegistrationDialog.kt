@@ -226,7 +226,7 @@ fun OnboardingRegistrationDialog(
 
                                 Button(
                                     onClick = {
-                                        viewModel.verifyMobileOtp(otpInput) { verified ->
+                                        viewModel.verifyMobileOtp(otpInput) { verified, _ ->
                                             if (verified) {
                                                 isVerified = true
                                                 Toast.makeText(context, "Mobile Number Verified Successfully!", Toast.LENGTH_SHORT).show()
@@ -310,13 +310,16 @@ fun OnboardingRegistrationDialog(
                 // Footer Actions
                 Button(
                     onClick = {
-                        viewModel.completeOnboardingRegistration(
-                            mobile = mobileInput,
-                            email = emailInput,
+                        viewModel.completeInitialStoreSetup(
                             firmName = firmNameInput,
                             ownerName = ownerNameInput,
+                            mobile = mobileInput,
+                            email = emailInput,
                             gstNumber = gstInput,
-                            address = addressInput
+                            address = addressInput,
+                            city = "Surat",
+                            state = "Gujarat",
+                            pincode = "395003"
                         ) { msg ->
                             Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
                             onDismiss()

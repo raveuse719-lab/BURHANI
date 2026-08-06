@@ -23,6 +23,7 @@ import com.example.ui.theme.TechBlue
 fun MainNavigationContainer(
     viewModel: BurhaniViewModel
 ) {
+    val isLoggedIn by viewModel.isLoggedIn.collectAsState()
     val currentTab by viewModel.currentTab.collectAsState()
     val user by viewModel.currentUser.collectAsState()
     val activeFirmCode by viewModel.activeFirmCode.collectAsState()
@@ -35,7 +36,16 @@ fun MainNavigationContainer(
     var openNewInvoiceDirectly by remember { mutableStateOf(false) }
 
     var showNavDrawer by remember { mutableStateOf(false) }
-    var showOnboardingQuickDialog by remember { mutableStateOf(false) }
+
+    if (!isLoggedIn) {
+        LoginScreen(
+            viewModel = viewModel,
+            onLoginSuccess = {
+                viewModel.selectTab(AppNavTab.DASHBOARD)
+            }
+        )
+        return
+    }
 
     Scaffold(
         topBar = {
@@ -44,7 +54,7 @@ fun MainNavigationContainer(
                     Column {
                         Text(
                             text = when (currentTab) {
-                                AppNavTab.DASHBOARD -> "Burhani Infotech ERP"
+                                AppNavTab.DASHBOARD -> "BI Service ERP"
                                 AppNavTab.CUSTOMERS -> "Customer Directory"
                                 AppNavTab.PRODUCTS -> "Inventory & Stock"
                                 AppNavTab.REPAIRS -> "Repair & Service Jobs"
@@ -74,10 +84,12 @@ fun MainNavigationContainer(
                 },
                 actions = {
                     IconButton(
-                        onClick = { showOnboardingQuickDialog = true },
+                        onClick = {
+                            viewModel.syncNowWithGoogleDrive { _, _ -> }
+                        },
                         modifier = Modifier.testTag("topbar_cloud_sync_btn")
                     ) {
-                        Icon(Icons.Default.CloudSync, contentDescription = "Central Google Drive Sync", tint = TechBlue)
+                        Icon(Icons.Default.CloudSync, contentDescription = "Google Drive Sync", tint = TechBlue)
                     }
 
                     if (lowStockList.isNotEmpty()) {
@@ -91,6 +103,12 @@ fun MainNavigationContainer(
                     }
                     IconButton(onClick = { viewModel.selectTab(AppNavTab.SETTINGS) }) {
                         Icon(Icons.Default.AccountCircle, contentDescription = "Profile")
+                    }
+                    IconButton(
+                        onClick = { viewModel.logoutUser() },
+                        modifier = Modifier.testTag("logout_btn")
+                    ) {
+                        Icon(Icons.Default.Logout, contentDescription = "Logout", tint = MaterialTheme.colorScheme.error)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -194,7 +212,7 @@ fun MainNavigationContainer(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    text = "Burhani Infotech ERP Menu",
+                    text = "BI Service ERP Menu",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = TechBlue
@@ -260,13 +278,6 @@ fun MainNavigationContainer(
                 Spacer(modifier = Modifier.height(20.dp))
             }
         }
-    }
-
-    if (showOnboardingQuickDialog) {
-        OnboardingRegistrationDialog(
-            viewModel = viewModel,
-            onDismiss = { showOnboardingQuickDialog = false }
-        )
     }
 }
 

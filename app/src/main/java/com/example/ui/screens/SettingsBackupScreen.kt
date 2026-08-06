@@ -64,7 +64,6 @@ fun SettingsBackupScreen(
 
     var showAddUserDialog by remember { mutableStateOf(false) }
     var showJoinFirmDialog by remember { mutableStateOf(false) }
-    var showOnboardingDialog by remember { mutableStateOf(false) }
     var showExportJsonDialog by remember { mutableStateOf(false) }
     var showImportJsonDialog by remember { mutableStateOf(false) }
     var exportedJsonText by remember { mutableStateOf("") }
@@ -291,7 +290,7 @@ fun SettingsBackupScreen(
             }
         }
 
-        // Google Drive Online Data Sync Card
+        // Google Drive Online Data Sync Card (Simplified)
         item {
             Card(
                 modifier = Modifier.fillMaxWidth().testTag("google_drive_sync_card"),
@@ -307,7 +306,7 @@ fun SettingsBackupScreen(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Icon(Icons.Default.CloudSync, contentDescription = null, tint = TechBlue, modifier = Modifier.size(24.dp))
-                            Text("Central Google Drive Cloud Sync", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TechBlue)
+                            Text("Google Drive Automatic Cloud Backup", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TechBlue)
                         }
 
                         Switch(
@@ -318,66 +317,57 @@ fun SettingsBackupScreen(
 
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = TechBlue.copy(alpha = 0.08f),
+                        color = if (isDriveSyncEnabled) GreenSuccess.copy(alpha = 0.12f) else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Icon(Icons.Default.MarkEmailRead, contentDescription = null, tint = TechBlue, modifier = Modifier.size(18.dp))
-                                Text("Central Drive Account: $adminDriveEmail", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, color = TechBlue)
+                        Row(
+                            modifier = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isDriveSyncEnabled) Icons.Default.CloudDone else Icons.Default.CloudOff,
+                                contentDescription = null,
+                                tint = if (isDriveSyncEnabled) GreenSuccess else MaterialTheme.colorScheme.error
+                            )
+                            Column {
+                                Text(
+                                    text = if (isDriveSyncEnabled) "Backup Status: Connected & Auto-Syncing" else "Backup Status: Disabled",
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = if (isDriveSyncEnabled) GreenSuccess else MaterialTheme.colorScheme.error
+                                )
+                                val timeStr = lastDriveSyncTime?.let {
+                                    SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(it))
+                                } ?: "Just Now"
+                                Text(
+                                    text = "Last Backup Time: $timeStr",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "Drive Account: $adminDriveEmail",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
-                            Text("Mobile No: $registeredMobile (OTP Verified) • Email: $registeredGmail", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("All sales, repairs & stock data automatically backs up to this central Google Drive account.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
 
-                    if (isDriveSyncEnabled) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = GreenSuccess.copy(alpha = 0.12f),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Icon(Icons.Default.CloudDone, contentDescription = null, tint = GreenSuccess)
-                                Column {
-                                    Text("Central Drive Sync: Active & Backing Up", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, color = GreenSuccess)
-                                    val timeStr = lastDriveSyncTime?.let {
-                                        SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(it))
-                                    } ?: "Never"
-                                    Text("Last Drive Backup: $timeStr", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
+                    Button(
+                        onClick = {
+                            viewModel.syncNowWithGoogleDrive { success, msg ->
+                                Toast.makeText(context, "Google Drive Auto-Backup Complete!", Toast.LENGTH_SHORT).show()
                             }
-                        }
-                    }
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        Button(
-                            onClick = {
-                                viewModel.syncNowWithGoogleDrive { success, msg ->
-                                    Toast.makeText(context, "Synced data to Central Google Drive ($adminDriveEmail)!", Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                            enabled = isDriveSyncEnabled,
-                            colors = ButtonDefaults.buttonColors(containerColor = TechBlue),
-                            modifier = Modifier.weight(1f).testTag("sync_central_drive_btn")
-                        ) {
-                            Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Sync Drive")
-                        }
-
-                        OutlinedButton(
-                            onClick = { showOnboardingDialog = true },
-                            modifier = Modifier.weight(1f).testTag("open_registration_dialog_btn")
-                        ) {
-                            Icon(Icons.Default.PhonelinkLock, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("OTP Registration")
-                        }
+                        },
+                        enabled = isDriveSyncEnabled,
+                        colors = ButtonDefaults.buttonColors(containerColor = TechBlue),
+                        modifier = Modifier.fillMaxWidth().height(48.dp).testTag("sync_now_btn"),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Sync Now", fontWeight = FontWeight.Bold)
                     }
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -394,10 +384,7 @@ fun SettingsBackupScreen(
                         }
 
                         OutlinedButton(
-                            onClick = {
-                                importJsonInput = ""
-                                showImportJsonDialog = true
-                            },
+                            onClick = { showImportJsonDialog = true },
                             modifier = Modifier.weight(1f)
                         ) {
                             Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -853,13 +840,6 @@ fun SettingsBackupScreen(
             dismissButton = {
                 TextButton(onClick = { showJoinFirmDialog = false }) { Text("Cancel") }
             }
-        )
-    }
-
-    if (showOnboardingDialog) {
-        OnboardingRegistrationDialog(
-            viewModel = viewModel,
-            onDismiss = { showOnboardingDialog = false }
         )
     }
 }

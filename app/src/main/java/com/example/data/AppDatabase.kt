@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
         BusinessProfile::class,
         User::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -47,8 +47,9 @@ abstract class AppDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "burhani_infotech_db"
+                    "bi_service_erp_db"
                 )
+                .fallbackToDestructiveMigration()
                 .addCallback(DatabaseCallback(scope))
                 .build()
                 INSTANCE = instance
@@ -75,16 +76,20 @@ abstract class AppDatabase : RoomDatabase() {
             db.businessProfileDao().insertOrUpdateProfile(
                 BusinessProfile(
                     id = 1,
-                    businessName = "Burhani Infotech",
-                    tagline = "Sales, Service & Repair Solutions",
-                    address = "102 Royal Commerce Hub, Station Road, City",
-                    phone = "+91 98250 12345",
-                    email = "support@burhaniinfotech.com",
+                    businessName = "BI Service ERP",
+                    ownerName = "Abdeali Makda",
+                    tagline = "Sales, Service & Repair Management",
+                    address = "102 Royal Commerce Hub, Station Road",
+                    city = "Surat",
+                    state = "Gujarat",
+                    pincode = "395003",
+                    phone = "+91 9726149451",
+                    email = "makdaabbdeali52@gmail.com",
                     gstin = "24ABCDB1234F1Z5",
                     bankName = "HDFC Bank",
                     accountNo = "50200088991122",
                     ifscCode = "HDFC0001234",
-                    upiId = "burhaniinfotech@okaxis"
+                    upiId = "biserviceerp@okaxis"
                 )
             )
 

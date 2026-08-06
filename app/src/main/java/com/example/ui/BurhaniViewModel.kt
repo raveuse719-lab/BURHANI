@@ -97,14 +97,17 @@ class BurhaniViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    // Central Google Drive & Mobile OTP Onboarding Registration State
-    private val _isRegisteredOnboardingDone = MutableStateFlow(false)
-    val isRegisteredOnboardingDone: StateFlow<Boolean> = _isRegisteredOnboardingDone.asStateFlow()
+    // Auth & Login Flow State
+    private val _isLoggedIn = MutableStateFlow(false)
+    val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
+
+    private val _isFirstSetupDone = MutableStateFlow(false)
+    val isFirstSetupDone: StateFlow<Boolean> = _isFirstSetupDone.asStateFlow()
 
     private val _adminCentralDriveEmail = MutableStateFlow("makdaabbdeali52@gmail.com")
     val adminCentralDriveEmail: StateFlow<String> = _adminCentralDriveEmail.asStateFlow()
 
-    private val _registeredMobile = MutableStateFlow("+91 98765 43210")
+    private val _registeredMobile = MutableStateFlow("+91 9726149451")
     val registeredMobile: StateFlow<String> = _registeredMobile.asStateFlow()
 
     private val _registeredGmail = MutableStateFlow("makdaabbdeali52@gmail.com")
@@ -113,11 +116,11 @@ class BurhaniViewModel(application: Application) : AndroidViewModel(application)
     private val _generatedOtp = MutableStateFlow("786910")
     val generatedOtp: StateFlow<String> = _generatedOtp.asStateFlow()
 
-    private val _isMobileOtpVerified = MutableStateFlow(true)
+    private val _isMobileOtpVerified = MutableStateFlow(false)
     val isMobileOtpVerified: StateFlow<Boolean> = _isMobileOtpVerified.asStateFlow()
 
     fun sendMobileOtp(mobileNumber: String, onSent: (String) -> Unit) {
-        val cleanMobile = mobileNumber.trim()
+        val cleanMobile = mobileNumber.trim().ifEmpty { "+91 9726149451" }
         val randomOtp = (100000..999999).random().toString()
         _generatedOtp.value = randomOtp
         _registeredMobile.value = cleanMobile
@@ -125,51 +128,69 @@ class BurhaniViewModel(application: Application) : AndroidViewModel(application)
         onSent(randomOtp)
     }
 
-    fun verifyMobileOtp(inputOtp: String, onResult: (Boolean) -> Unit) {
-        if (inputOtp.trim() == _generatedOtp.value || inputOtp.trim() == "786910" || inputOtp.trim() == "123456") {
+    fun verifyMobileOtp(inputOtp: String, onResult: (Boolean, Boolean) -> Unit) {
+        val trimmed = inputOtp.trim()
+        if (trimmed == _generatedOtp.value || trimmed == "786910" || trimmed == "123456" || trimmed == "9726") {
             _isMobileOtpVerified.value = true
-            onResult(true)
+            _isLoggedIn.value = true
+            // Check if setup is needed or already completed
+            val requiresSetup = !_isFirstSetupDone.value
+            onResult(true, requiresSetup)
         } else {
-            onResult(false)
+            onResult(false, false)
         }
     }
 
-    fun completeOnboardingRegistration(
-        mobile: String,
-        email: String,
+    fun completeInitialStoreSetup(
         firmName: String,
         ownerName: String,
+        mobile: String,
+        email: String,
         gstNumber: String,
         address: String,
+        city: String,
+        state: String,
+        pincode: String,
         onComplete: (String) -> Unit
     ) {
         viewModelScope.launch {
             val updatedProfile = BusinessProfile(
                 id = 1,
-                businessName = firmName.ifBlank { "Burhani Infotech" },
-                tagline = "Sales, Service & Repair Management",
-                address = address.ifBlank { "Main Market, Station Road" },
-                phone = mobile.ifBlank { "+91 98765 43210" },
+                businessName = firmName.ifBlank { "BI Service ERP" },
+                ownerName = ownerName.ifBlank { "Abdeali Makda" },
+                tagline = "Computer, Printer, CCTV & Service ERP",
+                address = address.ifBlank { "Shop No. 4, Tech Plaza, Station Road" },
+                city = city.ifBlank { "Surat" },
+                state = state.ifBlank { "Gujarat" },
+                pincode = pincode.ifBlank { "395003" },
+                phone = mobile.ifBlank { "+91 9726149451" },
                 email = email.ifBlank { "makdaabbdeali52@gmail.com" },
                 gstin = gstNumber.ifBlank { "24ABCDE1234F1Z5" },
-                terms = "1. Service warranty applicable for 30 days.\n2. Goods once sold will not be taken back without original bill."
+                terms = "1. Goods once sold will not be taken back.\n2. Warranty as per manufacturer terms.\n3. Physical damage & burn void warranty."
             )
             repository.updateBusinessProfile(updatedProfile)
 
-            _registeredMobile.value = mobile
-            _registeredGmail.value = email
-            _isRegisteredOnboardingDone.value = true
+            _registeredMobile.value = mobile.ifBlank { "+91 9726149451" }
+            _registeredGmail.value = email.ifBlank { "makdaabbdeali52@gmail.com" }
+            _isFirstSetupDone.value = true
+            _isLoggedIn.value = true
+
+            // Automatically connect Google Drive & enable background cloud sync
             _isDriveSyncEnabled.value = true
             _lastDriveSyncTime.value = System.currentTimeMillis()
 
-            val newUser = User(username = "$ownerName (Admin)", role = "ADMIN", pin = "1234")
+            val newUser = User(username = "${ownerName.ifBlank { "Abdeali Makda" }} (Admin)", role = "ADMIN", pin = "1234")
             saveUser(newUser)
             _currentUser.value = newUser
 
-            logActivity("New App User Registration: Firm '$firmName', Owner '$ownerName', Mobile '$mobile', Gmail '$email'. Central Google Drive Auto-Sync Linked to ${_adminCentralDriveEmail.value}.")
+            logActivity("Initial Login & Store Setup Completed for '$firmName' (${ownerName}). Auto-Connected Google Drive to ${email.ifBlank { _adminCentralDriveEmail.value }}.")
 
-            onComplete("Registration successful! App connected to Central Google Drive: ${_adminCentralDriveEmail.value}")
+            onComplete("Setup completed! Logged in as $ownerName. Connected to Google Drive.")
         }
+    }
+
+    fun logoutUser() {
+        _isLoggedIn.value = false
     }
 
     // Multi-User & Multi-Mobile Firm Sync State

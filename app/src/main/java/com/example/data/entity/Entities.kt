@@ -119,16 +119,20 @@ data class WarrantyClaim(
 @Entity(tableName = "business_profile")
 data class BusinessProfile(
     @PrimaryKey val id: Int = 1,
-    val businessName: String = "Burhani Infotech",
-    val tagline: String = "Computer, Printer, CCTV & Service Center",
+    val businessName: String = "BI Service ERP",
+    val ownerName: String = "Abdeali Makda",
+    val tagline: String = "Computer, Printer, CCTV & Service ERP",
     val address: String = "Shop No. 4, Tech Plaza, Station Road",
-    val phone: String = "+91 98250 12345",
-    val email: String = "info@burhaniinfotech.com",
+    val city: String = "Surat",
+    val state: String = "Gujarat",
+    val pincode: String = "395003",
+    val phone: String = "+91 9726149451",
+    val email: String = "makdaabbdeali52@gmail.com",
     val gstin: String = "24ABCDE1234F1Z5",
     val bankName: String = "HDFC Bank Ltd",
     val accountNo: String = "50200088991122",
     val ifscCode: String = "HDFC0001234",
-    val upiId: String = "burhaniinfotech@okaxis",
+    val upiId: String = "biserviceerp@okaxis",
     val terms: String = "1. Goods once sold will not be taken back.\n2. Warranty as per manufacturer terms.\n3. Physical damage & burn void warranty."
 )
 
