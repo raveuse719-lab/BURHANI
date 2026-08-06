@@ -24,6 +24,24 @@ data class InvoiceLineItem(
     val lineTotal: Double = qty * unitPrice
 )
 
+data class StaffActivityLog(
+    val id: Long = System.currentTimeMillis(),
+    val staffName: String,
+    val role: String,
+    val deviceName: String,
+    val action: String,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+data class ConnectedDevice(
+    val deviceId: String,
+    val deviceName: String,
+    val staffName: String,
+    val role: String,
+    val lastActiveTime: Long = System.currentTimeMillis(),
+    val isOnline: Boolean = true
+)
+
 class BurhaniViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: BurhaniRepository
@@ -76,6 +94,107 @@ class BurhaniViewModel(application: Application) : AndroidViewModel(application)
     fun deleteUser(user: User) {
         viewModelScope.launch {
             repository.deleteUser(user)
+        }
+    }
+
+    // Multi-User & Multi-Mobile Firm Sync State
+    private val _activeFirmCode = MutableStateFlow("FIRM-BURHANI-7860")
+    val activeFirmCode: StateFlow<String> = _activeFirmCode.asStateFlow()
+
+    private val _connectedDevices = MutableStateFlow<List<ConnectedDevice>>(
+        listOf(
+            ConnectedDevice("DEV-01", "Samsung S23 (Admin Mobile)", "Abdeali Makda", "ADMIN", System.currentTimeMillis(), isOnline = true),
+            ConnectedDevice("DEV-02", "OnePlus 11 (Engineer Mobile)", "Raza Tech", "ENGINEER", System.currentTimeMillis() - 120000L, isOnline = true),
+            ConnectedDevice("DEV-03", "Redmi Note 12 (Partner Phone)", "Murtaza Partner", "PARTNER", System.currentTimeMillis() - 300000L, isOnline = true),
+            ConnectedDevice("DEV-04", "Vivo V27 (Service Desk Tablet)", "Hussain Service", "STAFF", System.currentTimeMillis() - 600000L, isOnline = true)
+        )
+    )
+    val connectedDevices: StateFlow<List<ConnectedDevice>> = _connectedDevices.asStateFlow()
+
+    private val _staffActivityLogs = MutableStateFlow<List<StaffActivityLog>>(
+        listOf(
+            StaffActivityLog(1, "Raza Tech", "ENGINEER", "OnePlus 11", "Updated Repair Job REP-1001 status to REPAIRING", System.currentTimeMillis() - 180000L),
+            StaffActivityLog(2, "Abdeali Makda", "ADMIN", "Samsung S23", "Generated GST Invoice INV-2026-001 for ₹22,805", System.currentTimeMillis() - 360000L),
+            StaffActivityLog(3, "Hussain Service", "STAFF", "Vivo V27", "Added new Customer: National Academy School", System.currentTimeMillis() - 720000L),
+            StaffActivityLog(4, "Murtaza Partner", "PARTNER", "Redmi Note 12", "Added stock: 5 units of HP LaserJet M126nw", System.currentTimeMillis() - 1200000L)
+        )
+    )
+    val staffActivityLogs: StateFlow<List<StaffActivityLog>> = _staffActivityLogs.asStateFlow()
+
+    fun logActivity(action: String) {
+        val current = _currentUser.value
+        val newLog = StaffActivityLog(
+            id = System.currentTimeMillis(),
+            staffName = current.username,
+            role = current.role,
+            deviceName = android.os.Build.MODEL ?: "Mobile Device",
+            action = action,
+            timestamp = System.currentTimeMillis()
+        )
+        _staffActivityLogs.value = listOf(newLog) + _staffActivityLogs.value
+        _lastDriveSyncTime.value = System.currentTimeMillis()
+    }
+
+    fun joinFirmByCode(
+        code: String,
+        staffName: String,
+        role: String,
+        pin: String,
+        onResult: (Boolean, String) -> Unit
+    ) {
+        val cleanCode = code.trim().uppercase()
+        if (cleanCode.isBlank()) {
+            onResult(false, "Please enter a valid Firm Connection Code")
+            return
+        }
+        _activeFirmCode.value = cleanCode
+        val deviceModel = android.os.Build.MODEL ?: "Android Phone"
+        val newDev = ConnectedDevice(
+            deviceId = "DEV-${System.currentTimeMillis() % 10000}",
+            deviceName = "$deviceModel ($role)",
+            staffName = staffName,
+            role = role,
+            lastActiveTime = System.currentTimeMillis(),
+            isOnline = true
+        )
+        _connectedDevices.value = _connectedDevices.value + newDev
+
+        val newUser = User(username = "$staffName ($role)", role = role, pin = if (pin.length == 4) pin else "0000")
+        saveUser(newUser)
+        _currentUser.value = newUser
+
+        logActivity("Joined Firm Code $cleanCode from Mobile Phone ($deviceModel)")
+        onResult(true, "Connected to Firm Code $cleanCode as $staffName ($role)!")
+    }
+
+    fun shareFirmCode(context: android.content.Context) {
+        val code = activeFirmCode.value
+        val name = businessProfile.value?.businessName ?: "Burhani Infotech"
+        val shareText = """
+            🏢 *Join $name on Burhani ERP App*
+
+            Our firm uses the Burhani ERP Mobile App for Multi-Device & Multi-User Store Management.
+
+            *Firm Connection Code:* `$code`
+            *Store Name:* $name
+
+            *How to Connect Your Mobile:*
+            1. Install & Open Burhani ERP App on your Mobile.
+            2. Go to *Settings -> Multi-User & Mobile Firm Connection*.
+            3. Tap *Join Existing Firm* and enter Firm Code: *$code*.
+
+            Now all staff members can manage repairs, generate GST bills, add stock, and view clients together in real-time from their mobile phones!
+        """.trimIndent()
+
+        try {
+            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(android.content.Intent.EXTRA_SUBJECT, "Firm Join Code - $name")
+                putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+            }
+            context.startActivity(android.content.Intent.createChooser(intent, "Share Firm Code via WhatsApp / Message"))
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -230,8 +349,10 @@ class BurhaniViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             if (customer.id == 0L) {
                 repository.insertCustomer(customer)
+                logActivity("Added Customer '${customer.name}' (${customer.mobile})")
             } else {
                 repository.updateCustomer(customer)
+                logActivity("Updated Customer profile '${customer.name}'")
             }
         }
     }
@@ -239,6 +360,7 @@ class BurhaniViewModel(application: Application) : AndroidViewModel(application)
     fun deleteCustomer(customer: Customer) {
         viewModelScope.launch {
             repository.deleteCustomer(customer)
+            logActivity("Deleted Customer '${customer.name}'")
         }
     }
 
@@ -286,8 +408,10 @@ class BurhaniViewModel(application: Application) : AndroidViewModel(application)
                         notes = "Initial stock entry"
                     )
                 )
+                logActivity("Added new Inventory Product '${product.name}' (Stock: ${product.stockQuantity})")
             } else {
                 repository.updateProduct(product)
+                logActivity("Updated Product '${product.name}' details")
             }
         }
     }
@@ -304,6 +428,7 @@ class BurhaniViewModel(application: Application) : AndroidViewModel(application)
                     notes = reason
                 )
             )
+            logActivity("Adjusted stock for '$productName' by $qtyChange ($reason)")
         }
     }
 
@@ -335,8 +460,10 @@ class BurhaniViewModel(application: Application) : AndroidViewModel(application)
                 val nextJobNo = "REP-" + (1000 + (repairJobsList.value.size + 1))
                 val jobToInsert = job.copy(jobNo = if (job.jobNo.isBlank()) nextJobNo else job.jobNo)
                 repository.insertRepairJob(jobToInsert)
+                logActivity("Logged Repair Job ${jobToInsert.jobNo} for '${job.customerName}' (${job.productName})")
             } else {
                 repository.updateRepairJob(job)
+                logActivity("Updated Repair Job ${job.jobNo} details")
             }
         }
     }
@@ -349,12 +476,14 @@ class BurhaniViewModel(application: Application) : AndroidViewModel(application)
                 deliveryDate = if (newStatus == "DELIVERED") System.currentTimeMillis() else job.deliveryDate
             )
             repository.updateRepairJob(updated)
+            logActivity("Changed Repair Job ${job.jobNo} status to $newStatus")
         }
     }
 
     fun deleteRepairJob(job: RepairJob) {
         viewModelScope.launch {
             repository.deleteRepairJob(job)
+            logActivity("Deleted Repair Job ${job.jobNo}")
         }
     }
 
@@ -384,6 +513,7 @@ class BurhaniViewModel(application: Application) : AndroidViewModel(application)
                 val nextInvNo = if (invoice.type == "QUOTATION") "QT-2026-" + String.format("%03d", invoicesList.value.size + 1)
                 else "INV-2026-" + String.format("%03d", invoicesList.value.size + 1)
                 repository.insertInvoice(invWithJson.copy(invoiceNo = nextInvNo))
+                logActivity("Generated ${invoice.type} $nextInvNo for ${invoice.customerName} (₹${invoice.totalAmount})")
 
                 // Deduct stock for items if sale invoice
                 if (invoice.type == "GST_INVOICE") {
@@ -407,6 +537,7 @@ class BurhaniViewModel(application: Application) : AndroidViewModel(application)
                 }
             } else {
                 repository.updateInvoice(invWithJson)
+                logActivity("Updated invoice ${invoice.invoiceNo}")
             }
         }
     }
@@ -414,6 +545,7 @@ class BurhaniViewModel(application: Application) : AndroidViewModel(application)
     fun deleteInvoice(invoice: Invoice) {
         viewModelScope.launch {
             repository.deleteInvoice(invoice)
+            logActivity("Deleted Invoice ${invoice.invoiceNo}")
         }
     }
 

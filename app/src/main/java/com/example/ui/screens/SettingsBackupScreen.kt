@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -49,11 +50,16 @@ fun SettingsBackupScreen(
     val driveSyncFolder by viewModel.driveSyncFolder.collectAsState()
     val lastDriveSyncTime by viewModel.lastDriveSyncTime.collectAsState()
 
+    val activeFirmCode by viewModel.activeFirmCode.collectAsState()
+    val connectedDevices by viewModel.connectedDevices.collectAsState()
+    val staffActivityLogs by viewModel.staffActivityLogs.collectAsState()
+
     var showPinDialog by remember { mutableStateOf(false) }
     var pinInput by remember { mutableStateOf("") }
     var pinMessage by remember { mutableStateOf("") }
 
     var showAddUserDialog by remember { mutableStateOf(false) }
+    var showJoinFirmDialog by remember { mutableStateOf(false) }
     var showExportJsonDialog by remember { mutableStateOf(false) }
     var showImportJsonDialog by remember { mutableStateOf(false) }
     var exportedJsonText by remember { mutableStateOf("") }
@@ -93,8 +99,157 @@ fun SettingsBackupScreen(
         contentPadding = PaddingValues(bottom = 80.dp)
     ) {
         item {
-            Text("Settings & Online Drive Sync", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text("Manage User Accounts (Admin, Engineer, Partner, Staff) & Cloud Drive Data", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Settings & Multi-Device Sync", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Text("Multi-User Firm Connection, Staff Account Roles & Cloud Data Sync", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
+        // Multi-User & Multi-Mobile Firm Sync Card
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth().testTag("multi_user_firm_card"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+                border = BorderStroke(1.dp, TechBlue.copy(alpha = 0.4f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.Storefront, contentDescription = null, tint = TechBlue, modifier = Modifier.size(24.dp))
+                            Column {
+                                Text("Multi-User Firm Connection", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TechBlue)
+                                Text("Work together under 1 firm from different mobile phones", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = GreenSuccess.copy(alpha = 0.15f)
+                        ) {
+                            Row(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Box(modifier = Modifier.size(8.dp).background(GreenSuccess, shape = CircleShape))
+                                Text("Sync Active", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = GreenSuccess)
+                            }
+                        }
+                    }
+
+                    // Firm Code Banner Box
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = TechBlue.copy(alpha = 0.08f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("STORE / FIRM CONNECTION CODE", style = MaterialTheme.typography.labelSmall, color = TechBlue, fontWeight = FontWeight.Bold)
+                                Text(activeFirmCode, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
+                                Text("${profile?.businessName ?: "Burhani Infotech"} • Multi-Device Store", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                IconButton(
+                                    onClick = {
+                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                        val clip = ClipData.newPlainText("Firm Join Code", activeFirmCode)
+                                        clipboard.setPrimaryClip(clip)
+                                        Toast.makeText(context, "Firm Code '$activeFirmCode' copied to clipboard!", Toast.LENGTH_SHORT).show()
+                                    }
+                                ) {
+                                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy Firm Code", tint = TechBlue)
+                                }
+                            }
+                        }
+                    }
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { viewModel.shareFirmCode(context) },
+                            colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
+                            modifier = Modifier.weight(1f).testTag("share_firm_code_btn")
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Share Code (WhatsApp)")
+                        }
+
+                        OutlinedButton(
+                            onClick = { showJoinFirmDialog = true },
+                            modifier = Modifier.weight(1f).testTag("join_firm_btn")
+                        ) {
+                            Icon(Icons.Default.PhonelinkSetup, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Join Firm Code")
+                        }
+                    }
+
+                    HorizontalDivider()
+
+                    // Connected Staff Mobile Devices
+                    Text("Connected Staff Mobiles (${connectedDevices.size})", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge, color = TechBlue)
+
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        connectedDevices.forEach { dev ->
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Icon(
+                                            imageVector = Icons.Default.Smartphone,
+                                            contentDescription = null,
+                                            tint = if (dev.isOnline) GreenSuccess else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Column {
+                                            Text(dev.deviceName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                                            Text("Staff: ${dev.staffName}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                    }
+                                    RoleBadge(role = dev.role)
+                                }
+                            }
+                        }
+                    }
+
+                    // Live Audit Trail / Staff Activity Log
+                    if (staffActivityLogs.isNotEmpty()) {
+                        HorizontalDivider()
+                        Text("Realtime Staff Activity Log (Multi-Mobile Trail)", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge, color = TechBlue)
+
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            staffActivityLogs.take(5).forEach { log ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(Icons.Default.History, contentDescription = null, tint = TechBlue, modifier = Modifier.size(16.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("${log.staffName} (${log.deviceName})", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                                        Text(log.action, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
+                                    }
+                                    val timeAgo = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(log.timestamp))
+                                    Text(timeAgo, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // Active User Card
@@ -594,6 +749,93 @@ fun SettingsBackupScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showImportJsonDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // Dialog: Join Existing Firm Code on another Mobile
+    if (showJoinFirmDialog) {
+        var inputCode by remember { mutableStateOf(activeFirmCode) }
+        var staffNameInput by remember { mutableStateOf("") }
+        var staffPinInput by remember { mutableStateOf("") }
+        var selectedRole by remember { mutableStateOf("ENGINEER") }
+
+        AlertDialog(
+            onDismissRequest = { showJoinFirmDialog = false },
+            title = { Text("Join Existing Store Firm") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Enter the Firm Connection Code provided by your store admin to connect this mobile phone under the firm.", style = MaterialTheme.typography.bodySmall)
+
+                    OutlinedTextField(
+                        value = inputCode,
+                        onValueChange = { inputCode = it.uppercase() },
+                        label = { Text("Firm Code (e.g. FIRM-BURHANI-7860)") },
+                        leadingIcon = { Icon(Icons.Default.Storefront, contentDescription = null) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("join_firm_code_input")
+                    )
+
+                    OutlinedTextField(
+                        value = staffNameInput,
+                        onValueChange = { staffNameInput = it },
+                        label = { Text("Your Staff / Engineer Name") },
+                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("join_firm_staff_name_input")
+                    )
+
+                    OutlinedTextField(
+                        value = staffPinInput,
+                        onValueChange = { if (it.length <= 4) staffPinInput = it },
+                        label = { Text("Set 4-Digit Security PIN") },
+                        leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("join_firm_pin_input")
+                    )
+
+                    Text("Select Your Account Role:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf("ENGINEER", "STAFF", "PARTNER", "ADMIN").forEach { role ->
+                            FilterChip(
+                                selected = selectedRole == role,
+                                onClick = { selectedRole = role },
+                                label = { Text(role, style = MaterialTheme.typography.labelSmall) }
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (inputCode.isBlank() || staffNameInput.isBlank()) {
+                            Toast.makeText(context, "Please enter Firm Code and Staff Name", Toast.LENGTH_SHORT).show()
+                        } else {
+                            viewModel.joinFirmByCode(
+                                code = inputCode,
+                                staffName = staffNameInput.trim(),
+                                role = selectedRole,
+                                pin = staffPinInput
+                            ) { success, msg ->
+                                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                if (success) showJoinFirmDialog = false
+                            }
+                        }
+                    },
+                    modifier = Modifier.testTag("confirm_join_firm_btn")
+                ) {
+                    Text("Connect Phone to Firm")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showJoinFirmDialog = false }) { Text("Cancel") }
             }
         )
     }

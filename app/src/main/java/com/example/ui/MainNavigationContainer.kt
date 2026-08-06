@@ -25,6 +25,7 @@ fun MainNavigationContainer(
 ) {
     val currentTab by viewModel.currentTab.collectAsState()
     val user by viewModel.currentUser.collectAsState()
+    val activeFirmCode by viewModel.activeFirmCode.collectAsState()
     val lowStockList by viewModel.lowStockList.collectAsState()
     val repairJobs by viewModel.repairJobsList.collectAsState()
 
@@ -56,7 +57,7 @@ fun MainNavigationContainer(
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            text = "User: ${user.username}",
+                            text = "${user.username} • Firm Code: $activeFirmCode",
                             style = MaterialTheme.typography.labelSmall,
                             color = TechBlue
                         )
