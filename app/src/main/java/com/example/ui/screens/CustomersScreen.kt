@@ -44,6 +44,7 @@ fun CustomersScreen(
 
     var showAddDialog by remember { mutableStateOf(false) }
     var customerToEdit by remember { mutableStateOf<Customer?>(null) }
+    var customerToDelete by remember { mutableStateOf<Customer?>(null) }
     var selectedCustomerForHistory by remember { mutableStateOf<Customer?>(null) }
 
     Scaffold(

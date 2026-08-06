@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -13,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -26,9 +28,11 @@ fun SuppliersScreen(
     viewModel: BurhaniViewModel,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val suppliers by viewModel.suppliersList.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
     var supplierToEdit by remember { mutableStateOf<Supplier?>(null) }
+    var supplierToDelete by remember { mutableStateOf<Supplier?>(null) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -85,11 +89,18 @@ fun SuppliersScreen(
                                         Text(sup.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                         Text("Contact: ${sup.contactPerson} (${sup.mobile})", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
-                                    IconButton(onClick = {
-                                        supplierToEdit = sup
-                                        showAddDialog = true
-                                    }) {
-                                        Icon(Icons.Default.Edit, contentDescription = "Edit")
+                                    Row {
+                                        IconButton(onClick = {
+                                            supplierToEdit = sup
+                                            showAddDialog = true
+                                        }) {
+                                            Icon(Icons.Default.Edit, contentDescription = "Edit")
+                                        }
+                                        IconButton(onClick = {
+                                            supplierToDelete = sup
+                                        }) {
+                                            Icon(Icons.Default.Delete, contentDescription = "Delete Supplier", tint = MaterialTheme.colorScheme.error)
+                                        }
                                     }
                                 }
 
@@ -104,6 +115,29 @@ fun SuppliersScreen(
                 }
             }
         }
+    }
+
+    supplierToDelete?.let { sup ->
+        AlertDialog(
+            onDismissRequest = { supplierToDelete = null },
+            title = { Text("Delete Supplier?") },
+            text = { Text("Are you sure you want to delete supplier '${sup.name}'?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteSupplier(sup)
+                        Toast.makeText(context, "Supplier '${sup.name}' deleted", Toast.LENGTH_SHORT).show()
+                        supplierToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete Permanently")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { supplierToDelete = null }) { Text("Cancel") }
+            }
+        )
     }
 
     if (showAddDialog) {

@@ -142,6 +142,9 @@ interface WarrantyClaimDao {
 
     @Update
     suspend fun updateWarrantyClaim(claim: WarrantyClaim)
+
+    @Delete
+    suspend fun deleteWarrantyClaim(claim: WarrantyClaim)
 }
 
 @Dao

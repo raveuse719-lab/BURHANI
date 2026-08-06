@@ -56,6 +56,7 @@ class BurhaniRepository(private val db: AppDatabase) {
     val warrantyClaims: Flow<List<WarrantyClaim>> = db.warrantyClaimDao().getAllWarrantyClaims()
     suspend fun insertWarrantyClaim(claim: WarrantyClaim): Long = db.warrantyClaimDao().insertWarrantyClaim(claim)
     suspend fun updateWarrantyClaim(claim: WarrantyClaim) = db.warrantyClaimDao().updateWarrantyClaim(claim)
+    suspend fun deleteWarrantyClaim(claim: WarrantyClaim) = db.warrantyClaimDao().deleteWarrantyClaim(claim)
 
     // Business Profile
     val businessProfile: Flow<BusinessProfile?> = db.businessProfileDao().getBusinessProfile()

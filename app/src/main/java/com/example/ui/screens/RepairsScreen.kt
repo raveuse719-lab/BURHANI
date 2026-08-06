@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -48,6 +49,7 @@ fun RepairsScreen(
     var showAddDialog by remember { mutableStateOf(initialOpenAdd) }
     var selectedJobForStatusUpdate by remember { mutableStateOf<RepairJob?>(null) }
     var selectedJobForTicketReceipt by remember { mutableStateOf<RepairJob?>(null) }
+    var jobToDelete by remember { mutableStateOf<RepairJob?>(null) }
 
     val statusTabs = listOf(
         "ALL", "RECEIVED", "INSPECTION", "REPAIRING", "WAITING_PARTS", "READY", "DELIVERED", "RETURNED_NO_REPAIR"
@@ -137,6 +139,7 @@ fun RepairsScreen(
                             job = job,
                             onUpdateStatus = { selectedJobForStatusUpdate = job },
                             onPrintTicket = { selectedJobForTicketReceipt = job },
+                            onDeleteJob = { jobToDelete = job },
                             onNotifyCustomer = {
                                 val msg = "Burhani Infotech Alert: Dear ${job.customerName}, status of your ${job.productName} (${job.jobNo}) is now: ${job.status.replace("_", " ")}. Est. Cost: ₹${job.repairCost}. Thank you!"
                                 val url = "https://api.whatsapp.com/send?phone=91${job.customerMobile}&text=${Uri.encode(msg)}"
@@ -182,6 +185,30 @@ fun RepairsScreen(
         )
     }
 
+    // Delete Repair Job Dialog
+    jobToDelete?.let { job ->
+        AlertDialog(
+            onDismissRequest = { jobToDelete = null },
+            title = { Text("Delete Repair Job?") },
+            text = { Text("Are you sure you want to delete repair job ${job.jobNo} (${job.productName} for ${job.customerName})?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteRepairJob(job)
+                        Toast.makeText(context, "Repair job ${job.jobNo} deleted", Toast.LENGTH_SHORT).show()
+                        jobToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete Permanently")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { jobToDelete = null }) { Text("Cancel") }
+            }
+        )
+    }
+
     // Job Ticket / Receipt Sheet Dialog
     selectedJobForTicketReceipt?.let { job ->
         JobTicketReceiptDialog(
@@ -196,7 +223,8 @@ fun RepairJobDetailedCard(
     job: RepairJob,
     onUpdateStatus: () -> Unit,
     onPrintTicket: () -> Unit,
-    onNotifyCustomer: () -> Unit
+    onNotifyCustomer: () -> Unit,
+    onDeleteJob: () -> Unit = {}
 ) {
     val statusColor = when (job.status) {
         "RECEIVED" -> TechBlue
@@ -279,7 +307,10 @@ fun RepairJobDetailedCard(
                     Text("Bill: ₹${String.format("%.0f", job.repairCost)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = GreenSuccess)
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    IconButton(onClick = onDeleteJob) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete Job", tint = MaterialTheme.colorScheme.error)
+                    }
                     IconButton(onClick = onNotifyCustomer) {
                         Icon(Icons.Default.Share, contentDescription = "Notify WhatsApp", tint = Color(0xFF25D366))
                     }

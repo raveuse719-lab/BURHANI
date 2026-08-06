@@ -461,6 +461,12 @@ class BurhaniViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun deleteWarrantyClaim(claim: WarrantyClaim) {
+        viewModelScope.launch {
+            repository.deleteWarrantyClaim(claim)
+        }
+    }
+
     // Helper method to parse Invoice line items JSON string into Kotlin objects
     fun parseInvoiceItems(jsonStr: String): List<InvoiceLineItem> {
         val list = mutableListOf<InvoiceLineItem>()

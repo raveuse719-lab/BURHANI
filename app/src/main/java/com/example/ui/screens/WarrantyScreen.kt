@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -15,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -29,11 +31,13 @@ fun WarrantyScreen(
     viewModel: BurhaniViewModel,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val warrantyClaims by viewModel.warrantyClaimsList.collectAsState()
     val products by viewModel.productsList.collectAsState()
     val customers by viewModel.customersList.collectAsState()
 
     var showAddClaimDialog by remember { mutableStateOf(false) }
+    var claimToDelete by remember { mutableStateOf<com.example.data.entity.WarrantyClaim?>(null) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -133,22 +137,27 @@ fun WarrantyScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text("${claim.claimNo} • ${claim.customerName}", fontWeight = FontWeight.Bold)
-                                    Surface(
-                                        shape = RoundedCornerShape(6.dp),
-                                        color = when (claim.status) {
-                                            "APPROVED" -> GreenSuccess
-                                            "REPLACED" -> TechBlue
-                                            "REJECTED" -> RedAlert
-                                            else -> AmberWarning
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = when (claim.status) {
+                                                "APPROVED" -> GreenSuccess
+                                                "REPLACED" -> TechBlue
+                                                "REJECTED" -> RedAlert
+                                                else -> AmberWarning
+                                            }
+                                        ) {
+                                            Text(
+                                                text = claim.status,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
                                         }
-                                    ) {
-                                        Text(
-                                            text = claim.status,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.White,
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                        )
+                                        IconButton(onClick = { claimToDelete = claim }) {
+                                            Icon(Icons.Default.Delete, contentDescription = "Delete Claim", tint = MaterialTheme.colorScheme.error)
+                                        }
                                     }
                                 }
                                 Text("Product: ${claim.productName} (S/N: ${claim.serialNumber})", style = MaterialTheme.typography.bodySmall)
@@ -159,6 +168,29 @@ fun WarrantyScreen(
                 }
             }
         }
+    }
+
+    claimToDelete?.let { claim ->
+        AlertDialog(
+            onDismissRequest = { claimToDelete = null },
+            title = { Text("Delete Warranty Claim?") },
+            text = { Text("Are you sure you want to delete warranty claim ${claim.claimNo} for ${claim.customerName}?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteWarrantyClaim(claim)
+                        Toast.makeText(context, "Warranty claim ${claim.claimNo} deleted", Toast.LENGTH_SHORT).show()
+                        claimToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete Permanently")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { claimToDelete = null }) { Text("Cancel") }
+            }
+        )
     }
 
     if (showAddClaimDialog) {

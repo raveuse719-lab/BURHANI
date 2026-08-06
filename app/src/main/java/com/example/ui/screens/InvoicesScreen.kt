@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -49,6 +50,7 @@ fun InvoicesScreen(
 
     var showCreateInvoiceDialog by remember { mutableStateOf(initialOpenAdd) }
     var selectedInvoiceForPreview by remember { mutableStateOf<Invoice?>(null) }
+    var invoiceToDelete by remember { mutableStateOf<Invoice?>(null) }
     var invoiceTypeFilter by remember { mutableStateOf("ALL") }
 
     val filteredInvoices = invoices.filter {
@@ -193,13 +195,26 @@ fun InvoicesScreen(
                                         Text("₹${String.format("%.2f", invoice.totalAmount)}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = GreenSuccess)
                                     }
 
-                                    Button(
-                                        onClick = { selectedInvoiceForPreview = invoice },
-                                        shape = RoundedCornerShape(10.dp)
-                                    ) {
-                                        Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text("View & Print", fontSize = 12.sp)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        OutlinedButton(
+                                            onClick = { invoiceToDelete = invoice },
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                        ) {
+                                            Icon(Icons.Default.Delete, contentDescription = "Delete Bill", modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Delete", fontSize = 12.sp)
+                                        }
+
+                                        Button(
+                                            onClick = { selectedInvoiceForPreview = invoice },
+                                            shape = RoundedCornerShape(10.dp),
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                        ) {
+                                            Icon(Icons.Default.Print, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("View & Print", fontSize = 12.sp)
+                                        }
                                     }
                                 }
                             }
@@ -208,6 +223,30 @@ fun InvoicesScreen(
                 }
             }
         }
+    }
+
+    // Delete Invoice Confirmation Dialog
+    invoiceToDelete?.let { inv ->
+        AlertDialog(
+            onDismissRequest = { invoiceToDelete = null },
+            title = { Text("Delete Bill / Invoice?") },
+            text = { Text("Are you sure you want to permanently delete bill ${inv.invoiceNo} for ${inv.customerName} (₹${inv.totalAmount})?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteInvoice(inv)
+                        Toast.makeText(context, "Bill ${inv.invoiceNo} deleted successfully", Toast.LENGTH_SHORT).show()
+                        invoiceToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete Permanently")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { invoiceToDelete = null }) { Text("Cancel") }
+            }
+        )
     }
 
     // Create Invoice Dialog
