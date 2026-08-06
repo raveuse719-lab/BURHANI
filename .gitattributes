@@ -1,0 +1,9 @@
+*.jar binary
+*.class binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.keystore binary
+gradlew eol=lf
+gradlew.bat eol=crlf
