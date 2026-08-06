@@ -35,6 +35,7 @@ fun MainNavigationContainer(
     var openNewInvoiceDirectly by remember { mutableStateOf(false) }
 
     var showNavDrawer by remember { mutableStateOf(false) }
+    var showOnboardingQuickDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -72,6 +73,13 @@ fun MainNavigationContainer(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = { showOnboardingQuickDialog = true },
+                        modifier = Modifier.testTag("topbar_cloud_sync_btn")
+                    ) {
+                        Icon(Icons.Default.CloudSync, contentDescription = "Central Google Drive Sync", tint = TechBlue)
+                    }
+
                     if (lowStockList.isNotEmpty()) {
                         BadgedBox(
                             badge = { Badge { Text("${lowStockList.size}") } }
@@ -252,6 +260,13 @@ fun MainNavigationContainer(
                 Spacer(modifier = Modifier.height(20.dp))
             }
         }
+    }
+
+    if (showOnboardingQuickDialog) {
+        OnboardingRegistrationDialog(
+            viewModel = viewModel,
+            onDismiss = { showOnboardingQuickDialog = false }
+        )
     }
 }
 

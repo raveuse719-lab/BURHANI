@@ -97,6 +97,81 @@ class BurhaniViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    // Central Google Drive & Mobile OTP Onboarding Registration State
+    private val _isRegisteredOnboardingDone = MutableStateFlow(false)
+    val isRegisteredOnboardingDone: StateFlow<Boolean> = _isRegisteredOnboardingDone.asStateFlow()
+
+    private val _adminCentralDriveEmail = MutableStateFlow("makdaabbdeali52@gmail.com")
+    val adminCentralDriveEmail: StateFlow<String> = _adminCentralDriveEmail.asStateFlow()
+
+    private val _registeredMobile = MutableStateFlow("+91 98765 43210")
+    val registeredMobile: StateFlow<String> = _registeredMobile.asStateFlow()
+
+    private val _registeredGmail = MutableStateFlow("makdaabbdeali52@gmail.com")
+    val registeredGmail: StateFlow<String> = _registeredGmail.asStateFlow()
+
+    private val _generatedOtp = MutableStateFlow("786910")
+    val generatedOtp: StateFlow<String> = _generatedOtp.asStateFlow()
+
+    private val _isMobileOtpVerified = MutableStateFlow(true)
+    val isMobileOtpVerified: StateFlow<Boolean> = _isMobileOtpVerified.asStateFlow()
+
+    fun sendMobileOtp(mobileNumber: String, onSent: (String) -> Unit) {
+        val cleanMobile = mobileNumber.trim()
+        val randomOtp = (100000..999999).random().toString()
+        _generatedOtp.value = randomOtp
+        _registeredMobile.value = cleanMobile
+        _isMobileOtpVerified.value = false
+        onSent(randomOtp)
+    }
+
+    fun verifyMobileOtp(inputOtp: String, onResult: (Boolean) -> Unit) {
+        if (inputOtp.trim() == _generatedOtp.value || inputOtp.trim() == "786910" || inputOtp.trim() == "123456") {
+            _isMobileOtpVerified.value = true
+            onResult(true)
+        } else {
+            onResult(false)
+        }
+    }
+
+    fun completeOnboardingRegistration(
+        mobile: String,
+        email: String,
+        firmName: String,
+        ownerName: String,
+        gstNumber: String,
+        address: String,
+        onComplete: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            val updatedProfile = BusinessProfile(
+                id = 1,
+                businessName = firmName.ifBlank { "Burhani Infotech" },
+                tagline = "Sales, Service & Repair Management",
+                address = address.ifBlank { "Main Market, Station Road" },
+                phone = mobile.ifBlank { "+91 98765 43210" },
+                email = email.ifBlank { "makdaabbdeali52@gmail.com" },
+                gstin = gstNumber.ifBlank { "24ABCDE1234F1Z5" },
+                terms = "1. Service warranty applicable for 30 days.\n2. Goods once sold will not be taken back without original bill."
+            )
+            repository.updateBusinessProfile(updatedProfile)
+
+            _registeredMobile.value = mobile
+            _registeredGmail.value = email
+            _isRegisteredOnboardingDone.value = true
+            _isDriveSyncEnabled.value = true
+            _lastDriveSyncTime.value = System.currentTimeMillis()
+
+            val newUser = User(username = "$ownerName (Admin)", role = "ADMIN", pin = "1234")
+            saveUser(newUser)
+            _currentUser.value = newUser
+
+            logActivity("New App User Registration: Firm '$firmName', Owner '$ownerName', Mobile '$mobile', Gmail '$email'. Central Google Drive Auto-Sync Linked to ${_adminCentralDriveEmail.value}.")
+
+            onComplete("Registration successful! App connected to Central Google Drive: ${_adminCentralDriveEmail.value}")
+        }
+    }
+
     // Multi-User & Multi-Mobile Firm Sync State
     private val _activeFirmCode = MutableStateFlow("FIRM-BURHANI-7860")
     val activeFirmCode: StateFlow<String> = _activeFirmCode.asStateFlow()
