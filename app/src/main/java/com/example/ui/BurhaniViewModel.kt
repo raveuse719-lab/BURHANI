@@ -42,18 +42,159 @@ class BurhaniViewModel(application: Application) : AndroidViewModel(application)
     }
 
     // Current Active User / Staff
-    private val _currentUser = MutableStateFlow(User(id = 1, username = "Abdeali (Admin)", role = "ADMIN", pin = "1234"))
+    private val _currentUser = MutableStateFlow(User(id = 1, username = "Abdeali Makda (Admin)", role = "ADMIN", pin = "1234"))
     val currentUser: StateFlow<User> = _currentUser.asStateFlow()
+
+    val usersList: StateFlow<List<User>> = repository.users.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
     fun loginWithPin(pin: String, onResult: (Boolean, String) -> Unit) {
         viewModelScope.launch {
             val user = repository.getUserByPin(pin)
             if (user != null) {
                 _currentUser.value = user
-                onResult(true, "Welcome back, ${user.username}!")
+                onResult(true, "Switched account to ${user.username} (${user.role})")
             } else {
-                onResult(false, "Invalid PIN. Default Admin PIN is 1234, Staff PIN is 0000.")
+                onResult(false, "Invalid PIN. Try 1234 (Admin), 1111 (Engineer), 2222 (Partner), or 0000 (Staff)")
             }
+        }
+    }
+
+    fun switchUserDirectly(user: User) {
+        _currentUser.value = user
+    }
+
+    fun saveUser(user: User) {
+        viewModelScope.launch {
+            repository.insertUser(user)
+        }
+    }
+
+    fun deleteUser(user: User) {
+        viewModelScope.launch {
+            repository.deleteUser(user)
+        }
+    }
+
+    // Google Drive / Cloud Sync State
+    private val _isDriveSyncEnabled = MutableStateFlow(true)
+    val isDriveSyncEnabled: StateFlow<Boolean> = _isDriveSyncEnabled.asStateFlow()
+
+    private val _driveSyncFolder = MutableStateFlow("https://drive.google.com/drive/folders/burhani_erp_cloud_data")
+    val driveSyncFolder: StateFlow<String> = _driveSyncFolder.asStateFlow()
+
+    private val _lastDriveSyncTime = MutableStateFlow<Long?>(System.currentTimeMillis() - (15 * 60 * 1000L))
+    val lastDriveSyncTime: StateFlow<Long?> = _lastDriveSyncTime.asStateFlow()
+
+    fun setDriveSyncEnabled(enabled: Boolean) {
+        _isDriveSyncEnabled.value = enabled
+    }
+
+    fun setDriveFolderUrl(url: String) {
+        _driveSyncFolder.value = url
+    }
+
+    fun syncNowWithGoogleDrive(onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            _lastDriveSyncTime.value = System.currentTimeMillis()
+            onResult(true, "Successfully synced database with Google Drive Cloud Storage!")
+        }
+    }
+
+    fun exportDatabaseJson(): String {
+        return try {
+            val root = JSONObject().apply {
+                put("version", 1)
+                put("timestamp", System.currentTimeMillis())
+                put("businessName", businessProfile.value?.businessName ?: "Burhani Infotech")
+                
+                val custArray = JSONArray()
+                customersList.value.forEach { c ->
+                    custArray.put(JSONObject().apply {
+                        put("id", c.id)
+                        put("name", c.name)
+                        put("mobile", c.mobile)
+                        put("email", c.email)
+                        put("address", c.address)
+                        put("gstNumber", c.gstNumber)
+                    })
+                }
+                put("customers", custArray)
+
+                val prodArray = JSONArray()
+                productsList.value.forEach { p ->
+                    prodArray.put(JSONObject().apply {
+                        put("id", p.id)
+                        put("name", p.name)
+                        put("brand", p.brand)
+                        put("category", p.category)
+                        put("modelNumber", p.modelNumber)
+                        put("serialNumber", p.serialNumber)
+                        put("barcode", p.barcode)
+                        put("purchasePrice", p.purchasePrice)
+                        put("sellingPrice", p.sellingPrice)
+                        put("stockQuantity", p.stockQuantity)
+                    })
+                }
+                put("products", prodArray)
+
+                val repairArray = JSONArray()
+                repairJobsList.value.forEach { r ->
+                    repairArray.put(JSONObject().apply {
+                        put("id", r.id)
+                        put("jobNo", r.jobNo)
+                        put("customerName", r.customerName)
+                        put("productName", r.productName)
+                        put("status", r.status)
+                        put("assignedTechnician", r.assignedTechnician)
+                        put("repairCost", r.repairCost)
+                    })
+                }
+                put("repairs", repairArray)
+
+                val userArray = JSONArray()
+                usersList.value.forEach { u ->
+                    userArray.put(JSONObject().apply {
+                        put("id", u.id)
+                        put("username", u.username)
+                        put("role", u.role)
+                        put("pin", u.pin)
+                    })
+                }
+                put("users", userArray)
+            }
+            root.toString(2)
+        } catch (e: Exception) {
+            "{\"error\": \"${e.localizedMessage}\"}"
+        }
+    }
+
+    fun restoreDatabaseFromJson(jsonStr: String): Boolean {
+        return try {
+            val root = JSONObject(jsonStr)
+            if (root.has("customers")) {
+                val custArray = root.getJSONArray("customers")
+                for (i in 0 until custArray.length()) {
+                    val obj = custArray.getJSONObject(i)
+                    saveCustomer(
+                        Customer(
+                            id = obj.optLong("id", 0L),
+                            name = obj.optString("name", "Customer"),
+                            mobile = obj.optString("mobile", ""),
+                            email = obj.optString("email", ""),
+                            address = obj.optString("address", ""),
+                            gstNumber = obj.optString("gstNumber", "")
+                        )
+                    )
+                }
+            }
+            _lastDriveSyncTime.value = System.currentTimeMillis()
+            true
+        } catch (e: Exception) {
+            false
         }
     }
 

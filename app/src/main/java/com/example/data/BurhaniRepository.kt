@@ -65,4 +65,5 @@ class BurhaniRepository(private val db: AppDatabase) {
     val users: Flow<List<User>> = db.userDao().getAllUsers()
     suspend fun getUserByPin(pin: String): User? = db.userDao().getUserByPin(pin)
     suspend fun insertUser(user: User): Long = db.userDao().insertUser(user)
+    suspend fun deleteUser(user: User) = db.userDao().deleteUser(user)
 }

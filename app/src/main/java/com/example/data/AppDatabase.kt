@@ -88,9 +88,11 @@ abstract class AppDatabase : RoomDatabase() {
                 )
             )
 
-            // Users
+            // Users (Admin, Engineer, Partner, Staff)
             db.userDao().insertUser(User(username = "Abdeali Makda (Admin)", role = "ADMIN", pin = "1234"))
-            db.userDao().insertUser(User(username = "Hussain Tech (Staff)", role = "STAFF", pin = "0000"))
+            db.userDao().insertUser(User(username = "Raza Tech (Engineer)", role = "ENGINEER", pin = "1111"))
+            db.userDao().insertUser(User(username = "Murtaza Partner (Partner)", role = "PARTNER", pin = "2222"))
+            db.userDao().insertUser(User(username = "Hussain Service (Staff)", role = "STAFF", pin = "0000"))
 
             // Customers
             val c1 = db.customerDao().insertCustomer(Customer(name = "Rajesh Sharma", mobile = "9876543210", email = "rajesh.sharma@email.com", address = "A-301 Green Towers, City", gstNumber = "24AAACR1234A1Z1"))
