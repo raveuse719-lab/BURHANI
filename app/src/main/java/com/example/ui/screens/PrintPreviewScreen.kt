@@ -69,12 +69,19 @@ import com.example.ui.PrintViewModel
 import com.example.ui.theme.WifiPrimary
 import com.example.ui.theme.WifiSuccessGreen
 import com.example.util.DocumentPreviewEngine
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
+import com.example.util.AndroidSystemPrintEngine
 
 @Composable
 fun PrintPreviewScreen(
     viewModel: PrintViewModel,
     onNavigateToDiscovery: () -> Unit
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val activePrinter = uiState.activePrinter
     val file = uiState.selectedFile
@@ -124,38 +131,69 @@ fun PrintPreviewScreen(
                 )
             }
 
-            item { Spacer(modifier = Modifier.height(80.dp)) }
+            item { Spacer(modifier = Modifier.height(110.dp)) }
         }
 
-        // Bottom Fixed PRINT NOW Floating Button
+        // Bottom Fixed PRINT Floating Actions Bar
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth(),
-            tonalElevation = 8.dp,
+            tonalElevation = 12.dp,
             color = MaterialTheme.colorScheme.surface
         ) {
-            Box(modifier = Modifier.padding(16.dp)) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Primary System Print Button (Triggers Android PrintManager Spooler)
                 Button(
-                    onClick = { viewModel.triggerPrint() },
+                    onClick = {
+                        AndroidSystemPrintEngine.printViaSystemSpooler(context, file, settings)
+                        viewModel.triggerPrint()
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(54.dp)
-                        .testTag("trigger_print_button"),
+                        .height(52.dp)
+                        .testTag("trigger_system_print_button"),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = WifiPrimary)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Print,
-                        contentDescription = "Print Now",
+                        contentDescription = "System Direct Print",
                         tint = Color.White,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "PRINT NOW (${settings.copies} Copy • ${settings.paperSize})",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = Color.White
+                    )
+                }
+
+                // Secondary Wi-Fi Network RAW Print Button
+                OutlinedButton(
+                    onClick = { viewModel.triggerPrint() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
+                        .testTag("trigger_network_raw_print_button"),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Devices,
+                        contentDescription = "Wi-Fi Socket Print",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Wi-Fi IP Socket Print (${activePrinter?.ipAddress ?: "Direct IP"})",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
                     )
                 }
             }
@@ -276,47 +314,93 @@ fun DocumentCanvasPreview(
                         if (settings.colorMode == "Black & White") Color.Gray else WifiPrimary,
                         RoundedCornerShape(4.dp)
                     )
-                    .padding(16.dp)
+                    .padding(12.dp)
             ) {
-                Column {
-                    // Header
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = file.name,
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = if (settings.colorMode == "Black & White") Color.DarkGray else WifiPrimary
-                            )
-                        )
-                        Text(
-                            text = "Page ${currentPage + 1}/$totalPages",
-                            style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
+                if (!file.uriString.isNullOrBlank()) {
+                    // Render Real Photo / Image Document Preview
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(1.dp)
-                            .background(Color.LightGray)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val colorFilter = if (settings.colorMode == "Black & White") {
+                            ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
+                        } else null
 
-                    // Text Content Lines
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        pageLines.forEach { line ->
+                        val contentScale = when (settings.fitToPage) {
+                            "Fill Page" -> ContentScale.Crop
+                            "100% Scale" -> ContentScale.None
+                            else -> ContentScale.Fit
+                        }
+
+                        AsyncImage(
+                            model = file.uriString,
+                            contentDescription = "Selected Photo / Document Preview",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(4.dp)),
+                            contentScale = contentScale,
+                            colorFilter = colorFilter
+                        )
+
+                        // Top Overlay Badge
+                        Surface(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(4.dp),
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color.Black.copy(alpha = 0.65f)
+                        ) {
                             Text(
-                                text = line,
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontSize = 10.sp,
-                                    fontFamily = FontFamily.Monospace,
-                                    color = if (settings.colorMode == "Black & White") Color.Black else Color(0xFF0F172A)
+                                text = "${file.type} • Page ${currentPage + 1}/$totalPages",
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontSize = 10.sp,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                } else {
+                    // Render Text / Sample Document Preview Sheet
+                    Column {
+                        // Header
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = file.name,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (settings.colorMode == "Black & White") Color.DarkGray else WifiPrimary
                                 )
                             )
+                            Text(
+                                text = "Page ${currentPage + 1}/$totalPages",
+                                style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(Color.LightGray)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Text Content Lines
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            pageLines.forEach { line: String ->
+                                Text(
+                                    text = line,
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontSize = 10.sp,
+                                        fontFamily = FontFamily.Monospace,
+                                        color = if (settings.colorMode == "Black & White") Color.Black else Color(0xFF0F172A)
+                                    )
+                                )
+                            }
                         }
                     }
                 }
