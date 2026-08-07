@@ -4,38 +4,28 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.example.data.dao.AchievementDao
-import com.example.data.dao.ChildProfileDao
-import com.example.data.dao.CustomQuizDao
-import com.example.data.dao.DrawingDao
-import com.example.data.dao.ParentSettingsDao
-import com.example.data.dao.ProgressDao
-import com.example.data.entity.AchievementEntity
-import com.example.data.entity.ChildProfileEntity
-import com.example.data.entity.CustomQuizEntity
-import com.example.data.entity.ParentSettingsEntity
-import com.example.data.entity.SavedDrawingEntity
-import com.example.data.entity.UserProgressEntity
+import com.example.data.dao.ScanHistoryDao
+import com.example.data.dao.TrustedDeviceDao
+import com.example.data.dao.UserProfileDao
+import com.example.data.entity.ScanDeviceHistoryEntity
+import com.example.data.entity.ScanHistoryEntity
+import com.example.data.entity.TrustedDeviceEntity
+import com.example.data.entity.UserProfileEntity
 
 @Database(
     entities = [
-        ChildProfileEntity::class,
-        AchievementEntity::class,
-        UserProgressEntity::class,
-        SavedDrawingEntity::class,
-        ParentSettingsEntity::class,
-        CustomQuizEntity::class
+        UserProfileEntity::class,
+        TrustedDeviceEntity::class,
+        ScanHistoryEntity::class,
+        ScanDeviceHistoryEntity::class
     ],
     version = 1,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun childProfileDao(): ChildProfileDao
-    abstract fun achievementDao(): AchievementDao
-    abstract fun progressDao(): ProgressDao
-    abstract fun drawingDao(): DrawingDao
-    abstract fun parentSettingsDao(): ParentSettingsDao
-    abstract fun customQuizDao(): CustomQuizDao
+    abstract fun userProfileDao(): UserProfileDao
+    abstract fun trustedDeviceDao(): TrustedDeviceDao
+    abstract fun scanHistoryDao(): ScanHistoryDao
 
     companion object {
         @Volatile
@@ -46,7 +36,7 @@ abstract class AppDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "kids_learning_db"
+                    "wifi_inspector_db"
                 ).fallbackToDestructiveMigration().build()
                 INSTANCE = instance
                 instance

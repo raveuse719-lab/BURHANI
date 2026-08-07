@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "KidsLearningAndFun"
+rootProject.name = "WiFiInspector"
 
 include(":app")

@@ -3,76 +3,54 @@ package com.example.data.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "child_profiles")
-data class ChildProfileEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val name: String,
-    val age: Int,
-    val avatar: String, // e.g., "lion", "bear", "rabbit", "panda", "fox", "cat", "dog", "dino"
-    val coins: Int = 100,
-    val level: Int = 1,
-    val stars: Int = 10,
-    val dailyStreak: Int = 1,
-    val lastActiveTimestamp: Long = System.currentTimeMillis(),
-    val isCurrent: Boolean = false
-)
-
-@Entity(tableName = "user_achievements")
-data class AchievementEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val childProfileId: Int,
-    val badgeKey: String,
-    val title: String,
-    val description: String,
-    val icon: String,
-    val unlockedAt: Long = System.currentTimeMillis()
-)
-
-@Entity(tableName = "user_progress")
-data class UserProgressEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val childProfileId: Int,
-    val category: String,
-    val activityName: String,
-    val completedCount: Int = 1,
-    val score: Int = 0,
-    val timeSpentSeconds: Long = 0,
-    val lastCompletedAt: Long = System.currentTimeMillis()
-)
-
-@Entity(tableName = "saved_drawings")
-data class SavedDrawingEntity(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val childProfileId: Int,
-    val title: String,
-    val colorDataJson: String, // Store drawn path array / SVG data
-    val createdAt: Long = System.currentTimeMillis()
-)
-
-@Entity(tableName = "parent_settings")
-data class ParentSettingsEntity(
+@Entity(tableName = "user_profiles")
+data class UserProfileEntity(
     @PrimaryKey val id: Int = 1,
-    val parentPin: String = "1234",
-    val screenTimeLimitMinutes: Int = 30, // 0 means unlimited
-    val screenTimeUsedTodaySeconds: Long = 0,
-    val soundEnabled: Boolean = true,
-    val bgMusicEnabled: Boolean = true,
-    val voiceEnabled: Boolean = true,
-    val language: String = "en", // "en", "hi", "gu"
-    val parentPhone: String = "",
+    val phoneNumber: String = "",
+    val displayName: String = "Guest User",
     val isLoggedIn: Boolean = false,
-    val isSubscribed: Boolean = false
+    val isGuestMode: Boolean = true,
+    val themePreference: String = "SYSTEM", // "SYSTEM", "LIGHT", "DARK"
+    val alertNewDevice: Boolean = true,
+    val alertDisconnect: Boolean = true,
+    val alertOffline: Boolean = true,
+    val lastLoginTimestamp: Long = System.currentTimeMillis()
 )
 
-@Entity(tableName = "custom_quizzes")
-data class CustomQuizEntity(
+@Entity(tableName = "trusted_devices")
+data class TrustedDeviceEntity(
+    @PrimaryKey val macAddress: String,
+    val ipAddress: String,
+    val customName: String = "",
+    val originalName: String = "Unknown Device",
+    val deviceType: String = "Unknown", // Phone, Laptop, Desktop, CCTV, Smart TV, Printer, Router, Range Extender, IoT, Unknown
+    val vendor: String = "Unknown Vendor",
+    val isTrusted: Boolean = false,
+    val isUnknownAlert: Boolean = false,
+    val notes: String = "",
+    val lastSeenTimestamp: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "scan_history")
+data class ScanHistoryEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val category: String, // "ABC", "Numbers", "Animals", "Colors"
-    val question: String,
-    val option1: String,
-    val option2: String,
-    val option3: String,
-    val option4: String,
-    val correctIndex: Int,
-    val explanation: String
+    val timestamp: Long = System.currentTimeMillis(),
+    val ssid: String,
+    val gatewayIp: String,
+    val totalDevicesCount: Int,
+    val newDevicesCount: Int,
+    val offlineDevicesCount: Int
+)
+
+@Entity(tableName = "scan_device_history")
+data class ScanDeviceHistoryEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val historyId: Int,
+    val ipAddress: String,
+    val macAddress: String,
+    val deviceName: String,
+    val deviceType: String,
+    val vendor: String,
+    val responseTimeMs: Long,
+    val isOnline: Boolean
 )

@@ -16,7 +16,7 @@ android {
   compileSdk = 35
 
   defaultConfig {
-    applicationId = "com.aistudio.kidslearningfun.xqpzk"
+    applicationId = "com.aistudio.wifiinspector.app"
     minSdk = 24
     targetSdk = 35
     versionCode = 1

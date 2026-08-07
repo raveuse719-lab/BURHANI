@@ -17,43 +17,49 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = KidPurpleLight,
-    onPrimary = Color.Black,
-    primaryContainer = KidSurfaceDark,
-    onPrimaryContainer = KidPurpleLight,
-    secondary = KidPink,
-    onSecondary = Color.White,
-    tertiary = KidYellow,
-    background = KidBackgroundDark,
-    onBackground = TextPrimaryDark,
-    surface = KidSurfaceDark,
-    onSurface = TextPrimaryDark,
-    surfaceVariant = Color(0xFF382654),
-    onSurfaceVariant = TextSecondaryDark,
-    outline = Color(0xFF5E438A),
-    error = KidRed
+    primary = WifiPrimary,
+    onPrimary = WifiOnPrimary,
+    primaryContainer = WifiSurfaceDark,
+    onPrimaryContainer = WifiPrimaryContainer,
+    secondary = WifiSecondary,
+    onSecondary = WifiOnSecondary,
+    secondaryContainer = WifiCardDark,
+    onSecondaryContainer = WifiOnSecondaryContainer,
+    tertiary = WifiTertiary,
+    onTertiary = WifiOnTertiary,
+    background = WifiBackgroundDark,
+    onBackground = WifiOnBackgroundDark,
+    surface = WifiSurfaceDark,
+    onSurface = WifiOnSurfaceDark,
+    surfaceVariant = WifiCardDark,
+    onSurfaceVariant = WifiOnSurfaceDark,
+    outline = WifiSecondary,
+    error = WifiAlertRed
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = KidPurple,
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFEDE7F6),
-    onPrimaryContainer = KidPurple,
-    secondary = KidOrange,
-    onSecondary = Color.White,
-    tertiary = KidYellow,
-    background = KidBackgroundLight,
-    onBackground = TextPrimaryLight,
-    surface = KidSurfaceLight,
-    onSurface = TextPrimaryLight,
-    surfaceVariant = Color(0xFFF3E5F5),
-    onSurfaceVariant = TextSecondaryLight,
-    outline = Color(0xFFD1C4E9),
-    error = KidRed
+    primary = WifiPrimary,
+    onPrimary = WifiOnPrimary,
+    primaryContainer = WifiPrimaryContainer,
+    onPrimaryContainer = WifiOnPrimaryContainer,
+    secondary = WifiSecondary,
+    onSecondary = WifiOnSecondary,
+    secondaryContainer = WifiSecondaryContainer,
+    onSecondaryContainer = WifiOnSecondaryContainer,
+    tertiary = WifiTertiary,
+    onTertiary = WifiOnTertiary,
+    background = WifiBackgroundLight,
+    onBackground = WifiOnBackgroundLight,
+    surface = WifiSurfaceLight,
+    onSurface = WifiOnSurfaceLight,
+    surfaceVariant = WifiCardLight,
+    onSurfaceVariant = WifiOnSurfaceLight,
+    outline = WifiPrimaryContainer,
+    error = WifiAlertRed
 )
 
 @Composable
-fun KidsLearningTheme(
+fun WifiInspectorTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
@@ -68,10 +74,10 @@ fun KidsLearningTheme(
     }
 
     val view = LocalView.current
-    if (!view.isInEditMode) {
+    if (!view.isInEditMode && view.context is Activity) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
+            window.statusBarColor = colorScheme.background.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }

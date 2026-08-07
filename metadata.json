@@ -1,6 +1,6 @@
 {
-  "name": "Kids Learning & Fun",
-  "description": "Interactive educational, games, drawing, rhymes, quizzes, and parent controls app for kids aged 3-10.",
+  "name": "WiFi Inspector",
+  "description": "Modern Wi-Fi Inspector & Local Network Scanner app with device discovery, range extender detection, speed test, ping tool, router info, and security alerts.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -4,95 +4,65 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Update
-import com.example.data.entity.AchievementEntity
-import com.example.data.entity.ChildProfileEntity
-import com.example.data.entity.CustomQuizEntity
-import com.example.data.entity.ParentSettingsEntity
-import com.example.data.entity.SavedDrawingEntity
-import com.example.data.entity.UserProgressEntity
+import com.example.data.entity.ScanDeviceHistoryEntity
+import com.example.data.entity.ScanHistoryEntity
+import com.example.data.entity.TrustedDeviceEntity
+import com.example.data.entity.UserProfileEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
-interface ChildProfileDao {
-    @Query("SELECT * FROM child_profiles ORDER BY id ASC")
-    fun getAllProfiles(): Flow<List<ChildProfileEntity>>
+interface UserProfileDao {
+    @Query("SELECT * FROM user_profiles WHERE id = 1")
+    fun getProfileFlow(): Flow<UserProfileEntity?>
 
-    @Query("SELECT * FROM child_profiles WHERE isCurrent = 1 LIMIT 1")
-    fun getCurrentProfile(): Flow<ChildProfileEntity?>
-
-    @Query("SELECT * FROM child_profiles WHERE id = :id LIMIT 1")
-    suspend fun getProfileById(id: Int): ChildProfileEntity?
+    @Query("SELECT * FROM user_profiles WHERE id = 1")
+    suspend fun getProfile(): UserProfileEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertProfile(profile: ChildProfileEntity): Long
+    suspend fun insertOrUpdateProfile(profile: UserProfileEntity)
 
-    @Update
-    suspend fun updateProfile(profile: ChildProfileEntity)
+    @Query("UPDATE user_profiles SET themePreference = :theme WHERE id = 1")
+    suspend fun updateThemePreference(theme: String)
 
-    @Query("UPDATE child_profiles SET isCurrent = 0")
-    suspend fun clearCurrentProfile()
-
-    @Query("UPDATE child_profiles SET isCurrent = 1 WHERE id = :id")
-    suspend fun setCurrentProfile(id: Int)
-
-    @Query("DELETE FROM child_profiles WHERE id = :id")
-    suspend fun deleteProfile(id: Int)
+    @Query("UPDATE user_profiles SET alertNewDevice = :newDev, alertDisconnect = :disc, alertOffline = :off WHERE id = 1")
+    suspend fun updateNotificationSettings(newDev: Boolean, disc: Boolean, off: Boolean)
 }
 
 @Dao
-interface AchievementDao {
-    @Query("SELECT * FROM user_achievements WHERE childProfileId = :childId ORDER BY unlockedAt DESC")
-    fun getAchievements(childId: Int): Flow<List<AchievementEntity>>
+interface TrustedDeviceDao {
+    @Query("SELECT * FROM trusted_devices ORDER BY lastSeenTimestamp DESC")
+    fun getAllDevicesFlow(): Flow<List<TrustedDeviceEntity>>
+
+    @Query("SELECT * FROM trusted_devices WHERE macAddress = :mac LIMIT 1")
+    suspend fun getDeviceByMac(mac: String): TrustedDeviceEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAchievement(achievement: AchievementEntity)
+    suspend fun insertOrUpdateDevice(device: TrustedDeviceEntity)
+
+    @Query("DELETE FROM trusted_devices WHERE macAddress = :mac")
+    suspend fun deleteDeviceByMac(mac: String)
 }
 
 @Dao
-interface ProgressDao {
-    @Query("SELECT * FROM user_progress WHERE childProfileId = :childId ORDER BY lastCompletedAt DESC")
-    fun getProgressByChild(childId: Int): Flow<List<UserProgressEntity>>
+interface ScanHistoryDao {
+    @Query("SELECT * FROM scan_history ORDER BY timestamp DESC")
+    fun getAllScanHistoryFlow(): Flow<List<ScanHistoryEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertProgress(progress: UserProgressEntity)
-}
-
-@Dao
-interface DrawingDao {
-    @Query("SELECT * FROM saved_drawings WHERE childProfileId = :childId ORDER BY createdAt DESC")
-    fun getDrawingsByChild(childId: Int): Flow<List<SavedDrawingEntity>>
+    suspend fun insertScanHistory(history: ScanHistoryEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertDrawing(drawing: SavedDrawingEntity)
+    suspend fun insertScanDeviceHistory(devices: List<ScanDeviceHistoryEntity>)
 
-    @Query("DELETE FROM saved_drawings WHERE id = :id")
-    suspend fun deleteDrawing(id: Int)
-}
+    @Query("SELECT * FROM scan_device_history WHERE historyId = :historyId")
+    suspend fun getDevicesForHistory(historyId: Int): List<ScanDeviceHistoryEntity>
 
-@Dao
-interface ParentSettingsDao {
-    @Query("SELECT * FROM parent_settings WHERE id = 1 LIMIT 1")
-    fun getSettings(): Flow<ParentSettingsEntity?>
+    @Query("DELETE FROM scan_history WHERE id = :id")
+    suspend fun deleteHistoryById(id: Int)
 
-    @Query("SELECT * FROM parent_settings WHERE id = 1 LIMIT 1")
-    suspend fun getSettingsDirect(): ParentSettingsEntity?
+    @Query("DELETE FROM scan_history")
+    suspend fun clearAllHistory()
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertSettings(settings: ParentSettingsEntity)
-
-    @Update
-    suspend fun updateSettings(settings: ParentSettingsEntity)
-}
-
-@Dao
-interface CustomQuizDao {
-    @Query("SELECT * FROM custom_quizzes ORDER BY id DESC")
-    fun getAllQuizzes(): Flow<List<CustomQuizEntity>>
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertQuiz(quiz: CustomQuizEntity)
-
-    @Query("DELETE FROM custom_quizzes WHERE id = :id")
-    suspend fun deleteQuiz(id: Int)
+    @Query("DELETE FROM scan_device_history")
+    suspend fun clearAllDeviceHistory()
 }

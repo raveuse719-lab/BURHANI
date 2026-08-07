@@ -2,40 +2,34 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Kids Learning & Fun Color Palette
-val KidPurple = Color(0xFF7C4DFF)
-val KidPurpleLight = Color(0xFFB388FF)
-val KidOrange = Color(0xFFFF6D00)
-val KidYellow = Color(0xFFFFD600)
-val KidGreen = Color(0xFF00E676)
-val KidBlue = Color(0xFF00B0FF)
-val KidPink = Color(0xFFFF4081)
-val KidRed = Color(0xFFFF5252)
-val KidTeal = Color(0xFF1DE9B6)
+// WiFi Inspector Modern Blue & White Palette
+val WifiPrimary = Color(0xFF0284C7)       // Deep Sky Blue
+val WifiOnPrimary = Color(0xFFFFFFFF)
+val WifiPrimaryContainer = Color(0xFFE0F2FE)
+val WifiOnPrimaryContainer = Color(0xFF0369A1)
 
-val KidBackgroundLight = Color(0xFFFFF9E6) // Warm soft cream
-val KidSurfaceLight = Color(0xFFFFFFFF)
-val KidBackgroundDark = Color(0xFF1A1228) // Deep night starry theme
-val KidSurfaceDark = Color(0xFF2B1D42)
+val WifiSecondary = Color(0xFF0EA5E9)     // Vibrant Blue
+val WifiOnSecondary = Color(0xFFFFFFFF)
+val WifiSecondaryContainer = Color(0xFFBAE6FD)
+val WifiOnSecondaryContainer = Color(0xFF0284C7)
 
-val TextPrimaryLight = Color(0xFF2C1E4A)
-val TextSecondaryLight = Color(0xFF6B5B95)
-val TextPrimaryDark = Color(0xFFFFFFFF)
-val TextSecondaryDark = Color(0xFFD1C4E9)
+val WifiTertiary = Color(0xFF38BDF8)      // Bright Cyan Accent
+val WifiOnTertiary = Color(0xFF0F172A)
 
-// Category Accent Colors
-val ColorAbc = Color(0xFFFF5252)
-val ColorNumbers = Color(0xFFFF9100)
-val ColorColors = Color(0xFFFFD600)
-val ColorShapes = Color(0xFF00E676)
-val ColorAnimals = Color(0xFF00E5FF)
-val ColorBirds = Color(0xFF2979FF)
-val ColorFruits = Color(0xFF651FFF)
-val ColorVegetables = Color(0xFFAA00FF)
-val ColorVehicles = Color(0xFFF50057)
-val ColorDrawing = Color(0xFFFF4081)
-val ColorPuzzle = Color(0xFF1DE9B6)
-val ColorMemory = Color(0xFFFFC400)
-val ColorRhymes = Color(0xFF76FF03)
-val ColorQuiz = Color(0xFF00B0FF)
-val ColorDailyChallenge = Color(0xFFFF3D00)
+val WifiBackgroundLight = Color(0xFFF8FAFC) // Ultra Clean Light Off-White
+val WifiSurfaceLight = Color(0xFFFFFFFF)
+val WifiOnBackgroundLight = Color(0xFF0F172A)
+val WifiOnSurfaceLight = Color(0xFF1E293B)
+
+val WifiBackgroundDark = Color(0xFF0F172A)  // Deep Navy Tech Slate
+val WifiSurfaceDark = Color(0xFF1E293B)
+val WifiOnBackgroundDark = Color(0xFFF8FAFC)
+val WifiOnSurfaceDark = Color(0xFFF1F5F9)
+
+val WifiCardLight = Color(0xFFF1F5F9)
+val WifiCardDark = Color(0xFF334155)
+
+val WifiSuccessGreen = Color(0xFF10B981)
+val WifiWarningAmber = Color(0xFFF59E0B)
+val WifiAlertRed = Color(0xFFEF4444)
+val WifiPurple = Color(0xFF8B5CF6)

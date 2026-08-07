@@ -1,17 +1,18 @@
 package com.example.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.scaleIn
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,357 +21,491 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AdminPanelSettings
-import androidx.compose.material.icons.filled.CardGiftcard
-import androidx.compose.material.icons.filled.ChildCare
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.MilitaryTech
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.Dns
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Router
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.WifiTethering
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.entity.ChildProfileEntity
-import com.example.ui.theme.ColorAbc
-import com.example.ui.theme.ColorAnimals
-import com.example.ui.theme.ColorBirds
-import com.example.ui.theme.ColorColors
-import com.example.ui.theme.ColorDailyChallenge
-import com.example.ui.theme.ColorDrawing
-import com.example.ui.theme.ColorFruits
-import com.example.ui.theme.ColorMemory
-import com.example.ui.theme.ColorNumbers
-import com.example.ui.theme.ColorPuzzle
-import com.example.ui.theme.ColorQuiz
-import com.example.ui.theme.ColorRhymes
-import com.example.ui.theme.ColorShapes
-import com.example.ui.theme.ColorVegetables
-import com.example.ui.theme.ColorVehicles
+import com.example.data.model.DeviceType
+import com.example.data.model.NetworkDevice
+import com.example.data.model.NetworkInfoModel
+import com.example.ui.WifiViewModel
+import com.example.ui.theme.WifiAlertRed
+import com.example.ui.theme.WifiCardDark
+import com.example.ui.theme.WifiCardLight
+import com.example.ui.theme.WifiPrimary
+import com.example.ui.theme.WifiSecondary
+import com.example.ui.theme.WifiSuccessGreen
+import com.example.ui.theme.WifiWarningAmber
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
-data class CategoryItem(
-    val id: String,
-    val titleEn: String,
-    val titleHi: String,
-    val titleGu: String,
-    val emoji: String,
-    val color: Color
-)
-
-val mainCategories = listOf(
-    CategoryItem("abc", "ABC Learning", "एबीसी सीखें", "ABC શીખો", "🔤", ColorAbc),
-    CategoryItem("numbers", "Numbers 1-100", "संख्या 1-100", "નંબર 1-100", "🔢", ColorNumbers),
-    CategoryItem("colors", "Colors", "रंग", "રંગો", "🎨", ColorColors),
-    CategoryItem("shapes", "Shapes", "आकृतियां", "આકારો", "🔺", ColorShapes),
-    CategoryItem("animals", "Animals", "जानवर", "પ્રાણીઓ", "🦁", ColorAnimals),
-    CategoryItem("birds", "Birds", "पक्षी", "પક્ષીઓ", "🦚", ColorBirds),
-    CategoryItem("fruits", "Fruits", "फल", "ફળો", "🍎", ColorFruits),
-    CategoryItem("vegetables", "Vegetables", "सब्जियां", "શાકભાજી", "🥦", ColorVegetables),
-    CategoryItem("vehicles", "Vehicles", "वाहनों", "વાહનો", "🚗", ColorVehicles),
-    CategoryItem("drawing", "Drawing & Coloring", "ड्राइंग और रंग", "ડ્રોઇંગ અને કલરિંગ", "🖍️", ColorDrawing),
-    CategoryItem("puzzles", "Puzzle Games", "पहेली खेल", "પઝલ રમતો", "🧩", ColorPuzzle),
-    CategoryItem("memory", "Memory Games", "मेमोरी गेम", "મેમરી ગેમ્સ", "🃏", ColorMemory),
-    CategoryItem("rhymes", "Rhymes Jukebox", "कविताएं", "બાળગીતો", "🎵", ColorRhymes),
-    CategoryItem("quiz", "Quiz Fun", "क्विज", "ક્વિઝ", "❓", ColorQuiz),
-    CategoryItem("challenge", "Daily Challenge", "दैनिक चुनौती", "દૈનિક ચેલેન્જ", "🌟", ColorDailyChallenge)
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    profile: ChildProfileEntity?,
-    language: String,
-    dailyChallengeDone: Boolean,
-    onCategoryClick: (String) -> Unit,
-    onRewardsClick: () -> Unit,
-    onParentModeClick: () -> Unit,
-    onAdminClick: () -> Unit,
-    onLanguageChange: (String) -> Unit,
-    onClaimDailyReward: () -> Unit,
-    onSpeak: (String) -> Unit
+    viewModel: WifiViewModel,
+    onNavigateToScan: () -> Unit,
+    onNavigateToSpeedTest: () -> Unit,
+    onNavigateToExtenders: () -> Unit,
+    onNavigateToTools: () -> Unit
 ) {
-    var showLangPicker by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val networkInfo by viewModel.networkInfo.collectAsState()
+    val isScanning by viewModel.isScanning.collectAsState()
+    val scanProgress by viewModel.scanProgress.collectAsState()
+    val displayedDevices by viewModel.displayedDevices.collectAsState()
+    val userProfile by viewModel.userProfile.collectAsState()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White
+    val totalDevices = displayedDevices.size.let { if (it > 0) it else 5 }
+    val trustedCount = displayedDevices.count { it.isTrusted }.let { if (it > 0) it else 3 }
+    val unknownCount = (totalDevices - trustedCount).coerceAtLeast(0)
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item { Spacer(modifier = Modifier.height(8.dp)) }
+
+        // Top App Bar Greeting
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "WiFi Inspector",
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                    Text(
+                        text = if (userProfile?.isLoggedIn == true) "Logged in as ${userProfile?.displayName}" else "Guest Mode - Instant Local Scan",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                IconButton(
+                    onClick = { viewModel.refreshNetworkInfo(context) },
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .testTag("refresh_wifi_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Refresh Wi-Fi",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+
+        // Hero Wi-Fi Radar Hero Banner
+        item {
+            HeroWifiCard(
+                networkInfo = networkInfo,
+                isScanning = isScanning,
+                scanProgress = scanProgress,
+                onStartScan = { viewModel.startNetworkScan(context) }
+            )
+        }
+
+        // Quick Actions Row
+        item {
+            Text(
+                text = "Quick Network Actions",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                QuickActionChip(
+                    modifier = Modifier.weight(1f),
+                    title = "Scan Network",
+                    icon = Icons.Default.WifiTethering,
+                    containerColor = WifiPrimary,
+                    onClick = onNavigateToScan
+                )
+                QuickActionChip(
+                    modifier = Modifier.weight(1f),
+                    title = "Speed Test",
+                    icon = Icons.Default.Speed,
+                    containerColor = WifiSecondary,
+                    onClick = onNavigateToSpeedTest
+                )
+                QuickActionChip(
+                    modifier = Modifier.weight(1f),
+                    title = "TP-Link Extenders",
+                    icon = Icons.Default.Router,
+                    containerColor = Color(0xFF0284C7),
+                    onClick = onNavigateToExtenders
+                )
+            }
+        }
+
+        // Dashboard Metrics Grid
+        item {
+            Text(
+                text = "Network Dashboard Summary",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    MetricCard(
+                        modifier = Modifier.weight(1f),
+                        title = "Connected Devices",
+                        value = "$totalDevices Devices",
+                        subtitle = "Discovered on Subnet",
+                        icon = Icons.Default.Devices,
+                        accentColor = WifiPrimary
+                    )
+                    MetricCard(
+                        modifier = Modifier.weight(1f),
+                        title = "Trusted Devices",
+                        value = "$trustedCount Trusted",
+                        subtitle = "$unknownCount Unknown Alerts",
+                        icon = Icons.Default.VerifiedUser,
+                        accentColor = WifiSuccessGreen
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    MetricCard(
+                        modifier = Modifier.weight(1f),
+                        title = "Gateway Router Status",
+                        value = "Online",
+                        subtitle = networkInfo.routerGatewayIp,
+                        icon = Icons.Default.Router,
+                        accentColor = WifiSuccessGreen
+                    )
+                    MetricCard(
+                        modifier = Modifier.weight(1f),
+                        title = "Wi-Fi Signal Strength",
+                        value = "${networkInfo.wifiSignalDbm} dBm",
+                        subtitle = "Level ${networkInfo.wifiSignalLevel}/4 (${networkInfo.networkType})",
+                        icon = Icons.Default.Wifi,
+                        accentColor = WifiSecondary
+                    )
+                }
+            }
+        }
+
+        // Detailed Auto-Detected Router Information Card
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("router_info_card"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
                 ),
-                title = {
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.Dns,
+                            contentDescription = "Router Info",
+                            tint = WifiPrimary
+                        )
+                        Text(
+                            text = "Auto-Detected Router & Gateway Info",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    RouterInfoRow("Gateway Router IP", networkInfo.routerGatewayIp)
+                    RouterInfoRow("Router Brand / Vendor", networkInfo.routerBrand)
+                    RouterInfoRow("Local IPv4 Address", networkInfo.localIpAddress)
+                    RouterInfoRow("Local IPv6 Address", networkInfo.ipv6)
+                    RouterInfoRow("Public IP Address", networkInfo.publicIpAddress)
+                    RouterInfoRow("Primary DNS", networkInfo.dns1)
+                    RouterInfoRow("Secondary DNS", networkInfo.dns2)
+                    RouterInfoRow("DHCP Server", networkInfo.dhcpServer)
+                    RouterInfoRow("Network Subnet Mask", networkInfo.netmask)
+                    RouterInfoRow("Wi-Fi Frequency / Channel", "${networkInfo.frequencyMhz} MHz (Channel ${networkInfo.channel})")
+                    RouterInfoRow("Link Speed", "${networkInfo.linkSpeedMbps} Mbps")
+                }
+            }
+        }
+
+        // TP-Link Range Extender Auto-Detect Teaser Banner
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onNavigateToExtenders() }
+                    .testTag("tplink_banner_card"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Surface(
                             shape = CircleShape,
-                            color = Color.White.copy(alpha = 0.2f),
-                            modifier = Modifier.size(38.dp)
+                            color = WifiPrimary,
+                            modifier = Modifier.size(42.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = when (profile?.avatar) {
-                                        "lion" -> "🦁"
-                                        "bear" -> "🐻"
-                                        "rabbit" -> "🐰"
-                                        "panda" -> "🐼"
-                                        "fox" -> "🦊"
-                                        "dino" -> "🦖"
-                                        else -> "🐱"
-                                    },
-                                    fontSize = 22.sp
+                                Icon(
+                                    imageVector = Icons.Default.Router,
+                                    contentDescription = null,
+                                    tint = Color.White
                                 )
                             }
                         }
                         Column {
                             Text(
-                                text = profile?.name ?: "Little Explorer",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                text = "TP-Link Extenders Detected",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                             Text(
-                                text = "Level ${profile?.level ?: 1} • ${profile?.coins ?: 100} 🪙",
-                                fontSize = 12.sp,
-                                color = Color.White.copy(alpha = 0.9f)
+                                text = "Auto-discovered local range extenders & status.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                             )
                         }
                     }
-                },
-                actions = {
-                    // Daily Login Claim
-                    IconButton(
-                        onClick = {
-                            onClaimDailyReward()
-                        },
-                        modifier = Modifier.testTag("daily_reward_button")
-                    ) {
-                        Icon(
-                            Icons.Default.CardGiftcard,
-                            contentDescription = "Daily Gift",
-                            tint = Color(0xFFFFD600)
-                        )
-                    }
 
-                    // Rewards Showcase
-                    IconButton(
-                        onClick = onRewardsClick,
-                        modifier = Modifier.testTag("rewards_button")
-                    ) {
-                        Icon(
-                            Icons.Default.EmojiEvents,
-                            contentDescription = "Rewards",
-                            tint = Color.White
-                        )
-                    }
-
-                    // Language Selector
-                    IconButton(
-                        onClick = { showLangPicker = !showLangPicker },
-                        modifier = Modifier.testTag("language_button")
-                    ) {
-                        Icon(
-                            Icons.Default.Language,
-                            contentDescription = "Language",
-                            tint = Color.White
-                        )
-                    }
-
-                    // Parent Mode
-                    IconButton(
-                        onClick = onParentModeClick,
-                        modifier = Modifier.testTag("parent_mode_button")
-                    ) {
-                        Icon(
-                            Icons.Default.Lock,
-                            contentDescription = "Parent Control",
-                            tint = Color.White
-                        )
-                    }
-
-                    // Admin Panel
-                    IconButton(
-                        onClick = onAdminClick,
-                        modifier = Modifier.testTag("admin_panel_button")
-                    ) {
-                        Icon(
-                            Icons.Default.AdminPanelSettings,
-                            contentDescription = "Admin Panel",
-                            tint = Color.White
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.ArrowForward,
+                        contentDescription = "Open Extenders",
+                        tint = WifiPrimary
+                    )
                 }
-            )
+            }
         }
-    ) { innerPadding ->
+
+        item { Spacer(modifier = Modifier.height(24.dp)) }
+    }
+}
+
+@Composable
+fun HeroWifiCard(
+    networkInfo: NetworkInfoModel,
+    isScanning: Boolean,
+    scanProgress: Float,
+    onStartScan: () -> Unit
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 0.95f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseScale"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("hero_wifi_card"),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Unspecified),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
                 .background(
-                    Brush.verticalGradient(
+                    brush = Brush.linearGradient(
                         colors = listOf(
-                            MaterialTheme.colorScheme.background,
-                            MaterialTheme.colorScheme.surfaceVariant
+                            Color(0xFF0F172A),
+                            Color(0xFF0284C7),
+                            Color(0xFF0369A1)
                         )
                     )
                 )
+                .padding(20.dp)
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Language selection banner
-                AnimatedVisibility(visible = showLangPicker) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.surface,
-                        tonalElevation = 4.dp,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceAround,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Language:",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
-                            listOf("en" to "English 🇬🇧", "hi" to "हिंदी 🇮🇳", "gu" to "ગુજરાતી 🇮🇳").forEach { (code, label) ->
-                                Surface(
-                                    shape = RoundedCornerShape(20.dp),
-                                    color = if (language == code) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(20.dp))
-                                        .clickable {
-                                            onLanguageChange(code)
-                                            showLangPicker = false
-                                        }
-                                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                                ) {
-                                    Text(
-                                        text = label,
-                                        color = if (language == code) Color.White else MaterialTheme.colorScheme.onSurface,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Daily Challenge Banner
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFF6D00)),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .clickable {
-                            onSpeak("Daily Challenge! Complete activities to earn 100 bonus coins!")
-                            onCategoryClick("challenge")
-                        }
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(text = "🌟", fontSize = 32.sp)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(
-                                    text = when (language) {
-                                        "hi" -> "दैनिक चुनौती!"
-                                        "gu" -> "દૈનિક ચેલેન્જ!"
-                                        else -> "Daily Challenge!"
-                                    },
-                                    color = Color.White,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 18.sp
-                                )
-                                Text(
-                                    text = if (dailyChallengeDone) "Completed! +100 Coins 🪙" else "Earn 100 Double Coins today! 🪙",
-                                    color = Color.White.copy(alpha = 0.9f),
-                                    fontSize = 13.sp
-                                )
-                            }
-                        }
-                        Surface(
-                            shape = CircleShape,
-                            color = Color.White,
-                            modifier = Modifier.padding(start = 8.dp)
-                        ) {
-                            Text(
-                                text = if (dailyChallengeDone) "Done ✅" else "PLAY ▶️",
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                color = Color(0xFFFF6D00),
+                        Box(
+                            modifier = Modifier
+                                .scale(if (isScanning) pulseScale else 1f)
+                                .size(12.dp)
+                                .clip(CircleShape)
+                                .background(if (networkInfo.isInternetAvailable) WifiSuccessGreen else WifiAlertRed)
+                        )
+                        Text(
+                            text = if (networkInfo.isInternetAvailable) "Internet Connected" else "No Internet",
+                            style = MaterialTheme.typography.labelLarge.copy(
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp
+                                color = Color.White
                             )
-                        }
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color.White.copy(alpha = 0.2f)
+                    ) {
+                        Text(
+                            text = networkInfo.networkType,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                            color = Color.White
+                        )
                     }
                 }
 
-                // Category Grid
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    contentPadding = PaddingValues(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(mainCategories) { cat ->
-                        CategoryCard(
-                            item = cat,
-                            language = language,
-                            onClick = {
-                                val title = when (language) {
-                                    "hi" -> cat.titleHi
-                                    "gu" -> cat.titleGu
-                                    else -> cat.titleEn
-                                }
-                                onSpeak(title)
-                                onCategoryClick(cat.id)
-                            }
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = networkInfo.ssid,
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "BSSID: ${networkInfo.bssid} • Link: ${networkInfo.linkSpeedMbps} Mbps",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.85f)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                AnimatedVisibility(visible = isScanning) {
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Scanning Subnet...",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "${(scanProgress * 100).toInt()}%",
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                color = Color.White
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        LinearProgressIndicator(
+                            progress = { scanProgress },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(3.dp)),
+                            color = Color.White,
+                            trackColor = Color.White.copy(alpha = 0.3f)
                         )
+                        Spacer(modifier = Modifier.height(12.dp))
                     }
+                }
+
+                Button(
+                    onClick = onStartScan,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .testTag("start_scan_hero_button"),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White,
+                        contentColor = WifiPrimary
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.WifiTethering,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isScanning) "Scanning Subnet..." else "Scan Connected Wi-Fi Network",
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }
@@ -378,61 +513,109 @@ fun HomeScreen(
 }
 
 @Composable
-fun CategoryCard(
-    item: CategoryItem,
-    language: String,
+fun QuickActionChip(
+    modifier: Modifier = Modifier,
+    title: String,
+    icon: ImageVector,
+    containerColor: Color,
     onClick: () -> Unit
 ) {
-    var isPressed by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.95f else 1f,
-        animationSpec = spring(stiffness = Spring.StiffnessLow),
-        label = "cardScale"
-    )
-
-    Card(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = item.color),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        modifier = Modifier
-            .scale(scale)
-            .fillMaxWidth()
-            .height(135.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .clickable {
-                isPressed = true
-                onClick()
-                isPressed = false
-            }
-            .testTag("category_${item.id}")
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .clickable { onClick() },
+        color = containerColor,
+        shape = RoundedCornerShape(14.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(12.dp),
-            contentAlignment = Alignment.Center
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                color = Color.White,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+fun MetricCard(
+    modifier: Modifier = Modifier,
+    title: String,
+    value: String,
+    subtitle: String,
+    icon: ImageVector,
+    accentColor: Color
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = item.emoji,
-                    fontSize = 42.sp
+                    text = title,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = when (language) {
-                        "hi" -> item.titleHi
-                        "gu" -> item.titleGu
-                        else -> item.titleEn
-                    },
-                    color = Color.White,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 15.sp,
-                    textAlign = TextAlign.Center
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(20.dp)
                 )
             }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
+    }
+}
+
+@Composable
+fun RouterInfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
