@@ -16,7 +16,7 @@ android {
   compileSdk = 35
 
   defaultConfig {
-    applicationId = "com.aistudio.burhaniinfotech.erp"
+    applicationId = "com.aistudio.kidslearningfun.xqpzk"
     minSdk = 24
     targetSdk = 35
     versionCode = 1
@@ -115,7 +115,7 @@ dependencies {
   implementation(libs.androidx.navigation.compose)
   implementation(libs.androidx.room.ktx)
   implementation(libs.androidx.room.runtime)
-  // implementation(libs.coil.compose)
+  implementation(libs.coil.compose)
   implementation(libs.converter.moshi)
   implementation(libs.firebase.ai)
   // Uncomment to use Firestore:

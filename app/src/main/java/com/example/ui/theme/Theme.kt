@@ -17,47 +17,45 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = TechBlueLight,
-    onPrimary = SurfaceDark,
-    primaryContainer = NavyVariant,
-    onPrimaryContainer = TechBlueLight,
-    secondary = CyanAccent,
-    onSecondary = SurfaceDark,
-    tertiary = AmberWarning,
-    background = SurfaceDark,
+    primary = KidPurpleLight,
+    onPrimary = Color.Black,
+    primaryContainer = KidSurfaceDark,
+    onPrimaryContainer = KidPurpleLight,
+    secondary = KidPink,
+    onSecondary = Color.White,
+    tertiary = KidYellow,
+    background = KidBackgroundDark,
     onBackground = TextPrimaryDark,
-    surface = CardDark,
+    surface = KidSurfaceDark,
     onSurface = TextPrimaryDark,
-    surfaceVariant = NavyVariant,
+    surfaceVariant = Color(0xFF382654),
     onSurfaceVariant = TextSecondaryDark,
-    outline = OutlineDark,
-    outlineVariant = Color(0xFF475569),
-    error = RedAlert
+    outline = Color(0xFF5E438A),
+    error = KidRed
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = TechBlue,
-    onPrimary = SurfaceLight,
-    primaryContainer = Color(0xFFE0F2FE),
-    onPrimaryContainer = Color(0xFF0369A1),
-    secondary = CyanAccent,
-    onSecondary = SurfaceLight,
-    tertiary = AmberWarning,
-    background = SurfaceLight,
+    primary = KidPurple,
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFEDE7F6),
+    onPrimaryContainer = KidPurple,
+    secondary = KidOrange,
+    onSecondary = Color.White,
+    tertiary = KidYellow,
+    background = KidBackgroundLight,
     onBackground = TextPrimaryLight,
-    surface = CardLight,
+    surface = KidSurfaceLight,
     onSurface = TextPrimaryLight,
-    surfaceVariant = Color(0xFFF1F5F9),
+    surfaceVariant = Color(0xFFF3E5F5),
     onSurfaceVariant = TextSecondaryLight,
-    outline = OutlineLight,
-    outlineVariant = Color(0xFFCBD5E1),
-    error = RedAlert
+    outline = Color(0xFFD1C4E9),
+    error = KidRed
 )
 
 @Composable
-fun BurhaniTheme(
+fun KidsLearningTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false, // Set to false to preserve brand tech identity
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

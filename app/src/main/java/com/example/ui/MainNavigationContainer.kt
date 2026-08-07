@@ -1,314 +1,254 @@
 package com.example.ui
 
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.ui.screens.*
-import com.example.ui.theme.TechBlue
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.example.ui.screens.AdminPanelScreen
+import com.example.ui.screens.DrawingScreen
+import com.example.ui.screens.HomeScreen
+import com.example.ui.screens.LearningScreen
+import com.example.ui.screens.MemoryGameScreen
+import com.example.ui.screens.ParentModeScreen
+import com.example.ui.screens.PuzzleScreen
+import com.example.ui.screens.QuizScreen
+import com.example.ui.screens.RewardsBadgesScreen
+import com.example.ui.screens.RhymesScreen
+import kotlinx.coroutines.delay
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainNavigationContainer(
-    viewModel: BurhaniViewModel
+    viewModel: KidsViewModel
 ) {
-    val isLoggedIn by viewModel.isLoggedIn.collectAsState()
-    val currentTab by viewModel.currentTab.collectAsState()
-    val user by viewModel.currentUser.collectAsState()
-    val activeFirmCode by viewModel.activeFirmCode.collectAsState()
-    val lowStockList by viewModel.lowStockList.collectAsState()
-    val repairJobs by viewModel.repairJobsList.collectAsState()
+    val navController = rememberNavController()
 
-    val pendingRepairsCount = repairJobs.count { it.status != "DELIVERED" && it.status != "RETURNED_NO_REPAIR" }
+    val currentProfile by viewModel.currentProfile.collectAsStateWithLifecycle()
+    val allProfiles by viewModel.allProfiles.collectAsStateWithLifecycle()
+    val parentSettings by viewModel.parentSettings.collectAsStateWithLifecycle()
+    val achievements by viewModel.achievements.collectAsStateWithLifecycle()
+    val savedDrawings by viewModel.savedDrawings.collectAsStateWithLifecycle()
+    val progressList by viewModel.progressList.collectAsStateWithLifecycle()
+    val customQuizzes by viewModel.customQuizzes.collectAsStateWithLifecycle()
+    val language by viewModel.selectedLanguage.collectAsStateWithLifecycle()
 
-    var openNewRepairDirectly by remember { mutableStateOf(false) }
-    var openNewInvoiceDirectly by remember { mutableStateOf(false) }
+    val screenTimeBreak by viewModel.screenTimeBreakActive.collectAsStateWithLifecycle()
 
-    var showNavDrawer by remember { mutableStateOf(false) }
-
-    if (!isLoggedIn) {
-        LoginScreen(
-            viewModel = viewModel,
-            onLoginSuccess = {
-                viewModel.selectTab(AppNavTab.DASHBOARD)
-            }
-        )
-        return
+    // Auto create default profile on first launch if empty
+    LaunchedEffect(allProfiles) {
+        if (allProfiles.isEmpty()) {
+            viewModel.createChildProfile("Super Star", 5, "lion")
+        }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = when (currentTab) {
-                                AppNavTab.DASHBOARD -> "BI Service ERP"
-                                AppNavTab.CUSTOMERS -> "Customer Directory"
-                                AppNavTab.PRODUCTS -> "Inventory & Stock"
-                                AppNavTab.REPAIRS -> "Repair & Service Jobs"
-                                AppNavTab.INVOICES -> "Billing & Quotations"
-                                AppNavTab.WARRANTY -> "Warranty Tracking"
-                                AppNavTab.REPORTS -> "Reports & Analytics"
-                                AppNavTab.SUPPLIERS -> "Supplier Wholesalers"
-                                AppNavTab.SETTINGS -> "Settings & Profile"
-                            },
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = "${user.username} • Firm Code: $activeFirmCode",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = TechBlue
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = { showNavDrawer = true },
-                        modifier = Modifier.testTag("open_menu_btn")
-                    ) {
-                        Icon(Icons.Default.Menu, contentDescription = "Menu")
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = {
-                            viewModel.syncNowWithGoogleDrive { _, _ -> }
-                        },
-                        modifier = Modifier.testTag("topbar_cloud_sync_btn")
-                    ) {
-                        Icon(Icons.Default.CloudSync, contentDescription = "Google Drive Sync", tint = TechBlue)
-                    }
-
-                    if (lowStockList.isNotEmpty()) {
-                        BadgedBox(
-                            badge = { Badge { Text("${lowStockList.size}") } }
-                        ) {
-                            IconButton(onClick = { viewModel.selectTab(AppNavTab.PRODUCTS) }) {
-                                Icon(Icons.Default.Warning, contentDescription = "Low Stock Alert", tint = MaterialTheme.colorScheme.error)
-                            }
-                        }
-                    }
-                    IconButton(onClick = { viewModel.selectTab(AppNavTab.SETTINGS) }) {
-                        Icon(Icons.Default.AccountCircle, contentDescription = "Profile")
-                    }
-                    IconButton(
-                        onClick = { viewModel.logoutUser() },
-                        modifier = Modifier.testTag("logout_btn")
-                    ) {
-                        Icon(Icons.Default.Logout, contentDescription = "Logout", tint = MaterialTheme.colorScheme.error)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
-            )
-        },
-        bottomBar = {
-            NavigationBar(
-                modifier = Modifier
-                    .windowInsetsPadding(WindowInsets.navigationBars)
-                    .testTag("bottom_navigation_bar")
-            ) {
-                NavigationBarItem(
-                    selected = currentTab == AppNavTab.DASHBOARD,
-                    onClick = { viewModel.selectTab(AppNavTab.DASHBOARD) },
-                    icon = { Icon(Icons.Default.Dashboard, contentDescription = "Dashboard") },
-                    label = { Text("Dashboard") },
-                    modifier = Modifier.testTag("nav_tab_dashboard")
-                )
-                NavigationBarItem(
-                    selected = currentTab == AppNavTab.REPAIRS,
-                    onClick = { viewModel.selectTab(AppNavTab.REPAIRS) },
-                    icon = {
-                        if (pendingRepairsCount > 0) {
-                            BadgedBox(badge = { Badge { Text("$pendingRepairsCount") } }) {
-                                Icon(Icons.Default.Build, contentDescription = "Repairs")
-                            }
-                        } else {
-                            Icon(Icons.Default.Build, contentDescription = "Repairs")
-                        }
-                    },
-                    label = { Text("Repairs") },
-                    modifier = Modifier.testTag("nav_tab_repairs")
-                )
-                NavigationBarItem(
-                    selected = currentTab == AppNavTab.INVOICES,
-                    onClick = { viewModel.selectTab(AppNavTab.INVOICES) },
-                    icon = { Icon(Icons.Default.ReceiptLong, contentDescription = "Billing") },
-                    label = { Text("Billing") },
-                    modifier = Modifier.testTag("nav_tab_billing")
-                )
-                NavigationBarItem(
-                    selected = currentTab == AppNavTab.PRODUCTS,
-                    onClick = { viewModel.selectTab(AppNavTab.PRODUCTS) },
-                    icon = { Icon(Icons.Default.Inventory2, contentDescription = "Inventory") },
-                    label = { Text("Inventory") },
-                    modifier = Modifier.testTag("nav_tab_inventory")
-                )
-                NavigationBarItem(
-                    selected = currentTab == AppNavTab.CUSTOMERS,
-                    onClick = { viewModel.selectTab(AppNavTab.CUSTOMERS) },
-                    icon = { Icon(Icons.Default.People, contentDescription = "Clients") },
-                    label = { Text("Clients") },
-                    modifier = Modifier.testTag("nav_tab_clients")
-                )
-            }
-        }
-    ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
-            Crossfade(targetState = currentTab, label = "tab_crossfade") { tab ->
-                when (tab) {
-                    AppNavTab.DASHBOARD -> DashboardScreen(
-                        viewModel = viewModel,
-                        onNavigate = { viewModel.selectTab(it) },
-                        onOpenNewRepair = {
-                            openNewRepairDirectly = true
-                            viewModel.selectTab(AppNavTab.REPAIRS)
-                        },
-                        onOpenNewInvoice = {
-                            openNewInvoiceDirectly = true
-                            viewModel.selectTab(AppNavTab.INVOICES)
-                        }
-                    )
-                    AppNavTab.CUSTOMERS -> CustomersScreen(viewModel = viewModel)
-                    AppNavTab.PRODUCTS -> ProductsScreen(viewModel = viewModel)
-                    AppNavTab.REPAIRS -> {
-                        RepairsScreen(viewModel = viewModel, initialOpenAdd = openNewRepairDirectly)
-                        openNewRepairDirectly = false
-                    }
-                    AppNavTab.INVOICES -> {
-                        InvoicesScreen(viewModel = viewModel, initialOpenAdd = openNewInvoiceDirectly)
-                        openNewInvoiceDirectly = false
-                    }
-                    AppNavTab.WARRANTY -> WarrantyScreen(viewModel = viewModel)
-                    AppNavTab.REPORTS -> ReportsScreen(viewModel = viewModel)
-                    AppNavTab.SUPPLIERS -> SuppliersScreen(viewModel = viewModel)
-                    AppNavTab.SETTINGS -> SettingsBackupScreen(viewModel = viewModel)
+    // Screen Time Timer Tracker
+    var sessionSecondsSpent by remember { mutableIntStateOf(0) }
+    LaunchedEffect(parentSettings?.screenTimeLimitMinutes) {
+        val limit = parentSettings?.screenTimeLimitMinutes ?: 0
+        if (limit > 0) {
+            while (true) {
+                delay(1000L)
+                sessionSecondsSpent++
+                if (sessionSecondsSpent >= limit * 60) {
+                    viewModel.triggerScreenTimeBreak(true)
                 }
             }
         }
     }
 
-    // Modal Navigation Drawer Modal Sheet
-    if (showNavDrawer) {
-        ModalBottomSheet(
-            onDismissRequest = { showNavDrawer = false }
+    Box(modifier = Modifier.fillMaxSize()) {
+        NavHost(
+            navController = navController,
+            startDestination = "home",
+            modifier = Modifier.fillMaxSize()
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text(
-                    text = "BI Service ERP Menu",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = TechBlue
+            composable("home") {
+                HomeScreen(
+                    profile = currentProfile,
+                    language = language,
+                    dailyChallengeDone = false,
+                    onCategoryClick = { category ->
+                        when (category) {
+                            "drawing" -> navController.navigate("drawing")
+                            "puzzles" -> navController.navigate("puzzles")
+                            "memory" -> navController.navigate("memory")
+                            "rhymes" -> navController.navigate("rhymes")
+                            "quiz" -> navController.navigate("quiz")
+                            "challenge" -> {
+                                viewModel.completeDailyChallenge()
+                                navController.navigate("rewards")
+                            }
+                            else -> navController.navigate("learning/$category")
+                        }
+                    },
+                    onRewardsClick = { navController.navigate("rewards") },
+                    onParentModeClick = { navController.navigate("parent") },
+                    onAdminClick = { navController.navigate("admin") },
+                    onLanguageChange = { lang -> viewModel.setLanguage(lang) },
+                    onClaimDailyReward = { viewModel.claimDailyReward() },
+                    onSpeak = { text -> viewModel.speak(text) }
                 )
+            }
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+            composable(
+                route = "learning/{category}",
+                arguments = listOf(navArgument("category") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val category = backStackEntry.arguments?.getString("category") ?: "abc"
+                LearningScreen(
+                    category = category,
+                    language = language,
+                    onBackClick = { navController.popBackStack() },
+                    onSpeak = { text -> viewModel.speak(text) },
+                    onCompleted = { cat, score -> viewModel.completeActivity(cat, "Learning $cat", score, 30) }
+                )
+            }
 
-                DrawerMenuItem(
-                    label = "Dashboard",
-                    icon = Icons.Default.Dashboard,
-                    selected = currentTab == AppNavTab.DASHBOARD,
-                    onClick = { viewModel.selectTab(AppNavTab.DASHBOARD); showNavDrawer = false }
+            composable("drawing") {
+                DrawingScreen(
+                    savedDrawings = savedDrawings,
+                    onBackClick = { navController.popBackStack() },
+                    onSaveArtwork = { title, data -> viewModel.saveArtwork(title, data) },
+                    onDeleteArtwork = { id -> viewModel.deleteArtwork(id) },
+                    onSpeak = { text -> viewModel.speak(text) }
                 )
-                DrawerMenuItem(
-                    label = "Customer Management",
-                    icon = Icons.Default.People,
-                    selected = currentTab == AppNavTab.CUSTOMERS,
-                    onClick = { viewModel.selectTab(AppNavTab.CUSTOMERS); showNavDrawer = false }
-                )
-                DrawerMenuItem(
-                    label = "Product & Inventory Management",
-                    icon = Icons.Default.Inventory2,
-                    selected = currentTab == AppNavTab.PRODUCTS,
-                    onClick = { viewModel.selectTab(AppNavTab.PRODUCTS); showNavDrawer = false }
-                )
-                DrawerMenuItem(
-                    label = "Repair & Service Management",
-                    icon = Icons.Default.Build,
-                    selected = currentTab == AppNavTab.REPAIRS,
-                    onClick = { viewModel.selectTab(AppNavTab.REPAIRS); showNavDrawer = false }
-                )
-                DrawerMenuItem(
-                    label = "GST Billing & Quotations",
-                    icon = Icons.Default.ReceiptLong,
-                    selected = currentTab == AppNavTab.INVOICES,
-                    onClick = { viewModel.selectTab(AppNavTab.INVOICES); showNavDrawer = false }
-                )
-                DrawerMenuItem(
-                    label = "Warranty Management",
-                    icon = Icons.Default.VerifiedUser,
-                    selected = currentTab == AppNavTab.WARRANTY,
-                    onClick = { viewModel.selectTab(AppNavTab.WARRANTY); showNavDrawer = false }
-                )
-                DrawerMenuItem(
-                    label = "Reports & Analytics",
-                    icon = Icons.Default.BarChart,
-                    selected = currentTab == AppNavTab.REPORTS,
-                    onClick = { viewModel.selectTab(AppNavTab.REPORTS); showNavDrawer = false }
-                )
-                DrawerMenuItem(
-                    label = "Supplier Wholesalers",
-                    icon = Icons.Default.LocalShipping,
-                    selected = currentTab == AppNavTab.SUPPLIERS,
-                    onClick = { viewModel.selectTab(AppNavTab.SUPPLIERS); showNavDrawer = false }
-                )
-                DrawerMenuItem(
-                    label = "Settings, Profile & Backup",
-                    icon = Icons.Default.Settings,
-                    selected = currentTab == AppNavTab.SETTINGS,
-                    onClick = { viewModel.selectTab(AppNavTab.SETTINGS); showNavDrawer = false }
-                )
+            }
 
-                Spacer(modifier = Modifier.height(20.dp))
+            composable("puzzles") {
+                PuzzleScreen(
+                    language = language,
+                    onBackClick = { navController.popBackStack() },
+                    onSpeak = { text -> viewModel.speak(text) },
+                    onCompleted = { cat, score -> viewModel.completeActivity(cat, "Puzzle Game", score, 60) }
+                )
+            }
+
+            composable("memory") {
+                MemoryGameScreen(
+                    language = language,
+                    onBackClick = { navController.popBackStack() },
+                    onSpeak = { text -> viewModel.speak(text) },
+                    onCompleted = { cat, score -> viewModel.completeActivity(cat, "Memory Game", score, 60) }
+                )
+            }
+
+            composable("rhymes") {
+                RhymesScreen(
+                    language = language,
+                    onBackClick = { navController.popBackStack() },
+                    onSpeak = { text -> viewModel.speak(text) },
+                    onCompleted = { cat, score -> viewModel.completeActivity(cat, "Rhyme Jukebox", score, 45) }
+                )
+            }
+
+            composable("quiz") {
+                QuizScreen(
+                    customQuizzes = customQuizzes,
+                    language = language,
+                    onBackClick = { navController.popBackStack() },
+                    onSpeak = { text -> viewModel.speak(text) },
+                    onCompleted = { cat, score -> viewModel.completeActivity(cat, "Kids Quiz", score, 90) }
+                )
+            }
+
+            composable("rewards") {
+                RewardsBadgesScreen(
+                    profile = currentProfile,
+                    achievements = achievements,
+                    onBackClick = { navController.popBackStack() },
+                    onClaimReward = { viewModel.claimDailyReward() }
+                )
+            }
+
+            composable("parent") {
+                ParentModeScreen(
+                    parentSettings = parentSettings,
+                    allProfiles = allProfiles,
+                    currentProfile = currentProfile,
+                    progressList = progressList,
+                    onBackClick = { navController.popBackStack() },
+                    onUpdateSettings = { settings -> viewModel.updateParentSettings(settings) },
+                    onCreateProfile = { name, age, avatar -> viewModel.createChildProfile(name, age, avatar) },
+                    onSwitchProfile = { id -> viewModel.switchProfile(id) }
+                )
+            }
+
+            composable("admin") {
+                AdminPanelScreen(
+                    customQuizzes = customQuizzes,
+                    allProfiles = allProfiles,
+                    onBackClick = { navController.popBackStack() },
+                    onAddQuiz = { cat, q, o1, o2, o3, o4, corr, exp ->
+                        viewModel.addCustomQuiz(cat, q, o1, o2, o3, o4, corr, exp)
+                    },
+                    onDeleteQuiz = { id -> viewModel.deleteCustomQuiz(id) },
+                    onSpeak = { text -> viewModel.speak(text) }
+                )
             }
         }
-    }
-}
 
-@Composable
-fun DrawerMenuItem(
-    label: String,
-    icon: ImageVector,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
-        color = if (selected) TechBlue.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surface,
-        modifier = Modifier.fillMaxWidth().testTag("drawer_item_$label")
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (selected) TechBlue else MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                color = if (selected) TechBlue else MaterialTheme.colorScheme.onSurface
+        // Screen Time Rest Overlay
+        if (screenTimeBreak) {
+            AlertDialog(
+                onDismissRequest = {},
+                title = { Text("Screen Time Rest Break 🌙", fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.Bedtime, contentDescription = "Rest", tint = Color(0xFF7C4DFF), modifier = Modifier.size(60.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Great job learning today! Time to rest your eyes and take a fun play break!",
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            sessionSecondsSpent = 0
+                            viewModel.triggerScreenTimeBreak(false)
+                        },
+                        modifier = Modifier.testTag("resume_play_button")
+                    ) {
+                        Text("Parent Un-Pause ▶️")
+                    }
+                }
             )
         }
     }

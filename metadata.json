@@ -1,6 +1,6 @@
 {
-  "name": "BI Service ERP",
-  "description": "Multi-User ERP & Business Management system for computer sales, repair management, inventory, billing, customers, and cloud service sync.",
+  "name": "Kids Learning & Fun",
+  "description": "Interactive educational, games, drawing, rhymes, quizzes, and parent controls app for kids aged 3-10.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

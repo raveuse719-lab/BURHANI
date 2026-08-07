@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "BIServiceERP"
+rootProject.name = "KidsLearningAndFun"
 
 include(":app")
