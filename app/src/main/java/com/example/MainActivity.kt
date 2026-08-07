@@ -38,6 +38,7 @@ class MainActivity : ComponentActivity() {
                 val context = androidx.compose.ui.platform.LocalContext.current
                 androidx.compose.runtime.LaunchedEffect(Unit) {
                     vm.refreshNetworkInfo(context)
+                    vm.startDiscovery(context)
                 }
                 MainNavigationContainer(viewModel = vm)
             }

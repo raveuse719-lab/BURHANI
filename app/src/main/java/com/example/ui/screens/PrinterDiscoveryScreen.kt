@@ -45,6 +45,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -91,6 +92,14 @@ fun PrinterDiscoveryScreen(
             else -> true
         }
         matchesSearch && matchesFilter
+    }
+
+    // Auto-detect connected Wi-Fi printers when opening discovery screen
+    LaunchedEffect(Unit) {
+        viewModel.refreshNetworkInfo(context)
+        if (allPrinters.isEmpty()) {
+            viewModel.startDiscovery(context)
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {

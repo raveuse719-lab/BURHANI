@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
@@ -49,6 +50,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -89,11 +91,18 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+    val allPrinters by viewModel.allPrinters.collectAsState()
     val lastJob by viewModel.lastPrintJob.collectAsState()
     val completedCount by viewModel.completedJobsCount.collectAsState()
 
     val activePrinter = uiState.activePrinter
     val networkInfo = uiState.networkInfo
+
+    // Auto-detect connected Wi-Fi printers on home screen load
+    LaunchedEffect(Unit) {
+        viewModel.refreshNetworkInfo(context)
+        viewModel.runConnectionHealthCheck(context)
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -112,7 +121,7 @@ fun HomeScreen(
             ) {
                 Column {
                     Text(
-                        text = "BI WiFi Print",
+                        text = "WiFi Print & Scan",
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
@@ -167,6 +176,15 @@ fun HomeScreen(
                         onNavigateToFilePicker()
                     }
                 }
+            )
+        }
+
+        // Connection Health Check Card
+        item {
+            ConnectionHealthCheckCard(
+                uiState = uiState,
+                allPrinters = allPrinters,
+                onRunHealthCheck = { viewModel.runConnectionHealthCheck(context) }
             )
         }
 
@@ -740,6 +758,242 @@ fun MetricCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+        }
+    }
+}
+
+@Composable
+fun ConnectionHealthCheckCard(
+    uiState: PrintUiState,
+    allPrinters: List<PrinterEntity>,
+    onRunHealthCheck: () -> Unit
+) {
+    val netInfo = uiState.networkInfo
+    val isChecking = uiState.isHealthChecking
+    val signalDbm = netInfo.wifiStrengthDbm
+
+    val signalQuality = when {
+        signalDbm >= -55 -> "Excellent" to Color(0xFF10B981)
+        signalDbm >= -70 -> "Good" to Color(0xFF0284C7)
+        signalDbm >= -85 -> "Fair" to Color(0xFFF59E0B)
+        else -> "Weak" to Color(0xFFEF4444)
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("connection_health_card"),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Header Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = WifiPrimary.copy(alpha = 0.12f),
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.NetworkCheck,
+                                contentDescription = null,
+                                tint = WifiPrimary
+                            )
+                        }
+                    }
+
+                    Column {
+                        Text(
+                            text = "Connection Health Check",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                        Text(
+                            text = "Live Ping & Wi-Fi Diagnostics",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Button(
+                    onClick = onRunHealthCheck,
+                    enabled = !isChecking,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = WifiPrimary),
+                    modifier = Modifier.testTag("ping_health_check_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(if (isChecking) "Pinging..." else "Ping Check", fontSize = 12.sp)
+                }
+            }
+
+            if (isChecking) {
+                Spacer(modifier = Modifier.height(12.dp))
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp)),
+                    color = WifiPrimary
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = uiState.healthCheckMessage.ifBlank { "Pinging detected devices..." },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Wi-Fi Signal Metrics Panel
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Wifi,
+                            contentDescription = null,
+                            tint = signalQuality.second
+                        )
+                        Column {
+                            Text(
+                                text = "Wi-Fi Signal: $signalDbm dBm",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                            )
+                            Text(
+                                text = "SSID: ${netInfo.ssid} • IP: ${netInfo.localIp}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = signalQuality.second.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            text = signalQuality.first,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = signalQuality.second,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Device List Health Breakdown
+            Text(
+                text = "Device Latency & Online Status",
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            val displayPrinters = if (allPrinters.isNotEmpty()) allPrinters else listOfNotNull(uiState.activePrinter)
+            if (displayPrinters.isEmpty()) {
+                Text(
+                    text = "No detected printer devices yet. Tap 'Ping Check' or 'Scan Printers' to discover devices.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    displayPrinters.forEach { printer ->
+                        val isOnline = printer.status == "Online"
+                        val statusColor = if (isOnline) WifiSuccessGreen else WifiAlertRed
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                                .padding(10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .clip(CircleShape)
+                                        .background(statusColor)
+                                )
+                                Column {
+                                    Text(
+                                        text = printer.name,
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = "${printer.ipAddress}:${printer.port} • ${printer.protocol}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = statusColor.copy(alpha = 0.15f)
+                                ) {
+                                    Text(
+                                        text = if (isOnline) "Online (${printer.signalMs}ms)" else "Offline",
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            color = statusColor,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

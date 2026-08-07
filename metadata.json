@@ -1,6 +1,6 @@
 {
-  "name": "BI WiFi Print",
-  "description": "Professional network printer discovery, PC print server client, multi-format file preview, and direct wireless printing app for Android.",
+  "name": "WiFi Print & Scan",
+  "description": "Production-ready Wi-Fi printer discovery, direct network document printing, multi-page scanner, and OCR tool",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

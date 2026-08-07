@@ -123,6 +123,42 @@ object PrinterDiscoveryEngine {
         return null
     }
 
+    data class DeviceHealthResult(
+        val ipAddress: String,
+        val isOnline: Boolean,
+        val pingLatencyMs: Long,
+        val wifiSignalDbm: Int,
+        val statusText: String,
+        val timestamp: Long = System.currentTimeMillis()
+    )
+
+    suspend fun pingPrinterDevice(printer: PrinterEntity, wifiRssi: Int = -50): DeviceHealthResult = withContext(Dispatchers.IO) {
+        val start = System.currentTimeMillis()
+        var isReachable = false
+        val portsToCheck = listOf(printer.port, 9100, 631, 80, 8080, 515)
+        for (port in portsToCheck) {
+            try {
+                Socket().use { socket ->
+                    socket.connect(InetSocketAddress(printer.ipAddress, port), 350)
+                    isReachable = true
+                }
+                if (isReachable) break
+            } catch (_: Exception) {
+            }
+        }
+
+        val elapsed = (System.currentTimeMillis() - start).coerceAtLeast(4L)
+        val statusStr = if (isReachable) "Online" else "Offline"
+
+        DeviceHealthResult(
+            ipAddress = printer.ipAddress,
+            isOnline = isReachable,
+            pingLatencyMs = if (isReachable) elapsed else 0L,
+            wifiSignalDbm = wifiRssi,
+            statusText = statusStr
+        )
+    }
+
     fun parseQrCodeData(qrText: String): PrinterEntity? {
         return try {
             if (qrText.contains("wifiprint://") || qrText.contains("printer://")) {
