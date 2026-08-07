@@ -72,28 +72,11 @@ class WifiViewModel(
     private val _speedTestResult = MutableStateFlow(SpeedTestResult())
     val speedTestResult: StateFlow<SpeedTestResult> = _speedTestResult.asStateFlow()
 
-    private val _notifications = MutableStateFlow<List<AppNotification>>(
-        listOf(
-            AppNotification(
-                title = "WiFi Inspector Ready",
-                message = "Connected to Wi-Fi. Network scan ready.",
-                type = NotificationType.INFO
-            )
-        )
-    )
+    private val _notifications = MutableStateFlow<List<AppNotification>>(emptyList())
     val notifications: StateFlow<List<AppNotification>> = _notifications.asStateFlow()
 
-    private val _networkQuality = MutableStateFlow(
-        NetworkQualityScore(
-            grade = "A+",
-            ratingText = "Excellent for 4K Streaming & Low-Latency Gaming",
-            latencyScore = 96,
-            speedScore = 92,
-            securityScore = 98,
-            stabilityScore = 95
-        )
-    )
-    val networkQuality: StateFlow<NetworkQualityScore> = _networkQuality.asStateFlow()
+    private val _networkQuality = MutableStateFlow<NetworkQualityScore?>(null)
+    val networkQuality: StateFlow<NetworkQualityScore?> = _networkQuality.asStateFlow()
 
     // Combined Devices List (Merging scanned raw devices with saved custom names & trusted state in Room)
     val displayedDevices: StateFlow<List<NetworkDevice>> = combine(
@@ -269,8 +252,37 @@ class WifiViewModel(
         viewModelScope.launch {
             repository.runSpeedTestFlow().collect { res ->
                 _speedTestResult.value = res
+                if (res.testState == SpeedTestState.COMPLETED) {
+                    calculateQualityFromResults(res)
+                }
             }
         }
+    }
+
+    private fun calculateQualityFromResults(speedResult: SpeedTestResult) {
+        val down = speedResult.downloadMbps
+        val ping = speedResult.pingMs
+        val speedScore = (down * 2f).toInt().coerceIn(10, 100)
+        val latencyScore = if (ping > 0) (100 - ping).toInt().coerceIn(10, 100) else 50
+        val signal = _networkInfo.value.wifiSignalDbm
+        val stabilityScore = if (signal != 0) (100 + signal).coerceIn(20, 100) else 70
+        val securityScore = 95
+        val avg = (speedScore + latencyScore + stabilityScore + securityScore) / 4
+        val grade = when {
+            avg >= 90 -> "A+"
+            avg >= 80 -> "A"
+            avg >= 70 -> "B"
+            avg >= 60 -> "C"
+            else -> "D"
+        }
+        _networkQuality.value = NetworkQualityScore(
+            grade = grade,
+            ratingText = "Grade $grade based on measured ${down.toInt()} Mbps download speed and ${ping}ms latency",
+            latencyScore = latencyScore,
+            speedScore = speedScore,
+            securityScore = securityScore,
+            stabilityScore = stabilityScore
+        )
     }
 
     fun loginWithOtp(phoneNumber: String, name: String) {
@@ -286,7 +298,7 @@ class WifiViewModel(
 
     fun logoutOrGuest() {
         viewModelScope.launch {
-            repository.saveUserProfile(phoneNumber = "", name = "Guest User", isLoggedIn = false)
+            repository.saveUserProfile(phoneNumber = "", name = "User", isLoggedIn = false)
         }
     }
 

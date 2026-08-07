@@ -63,11 +63,11 @@ object NetworkUtils {
         val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
         val connectivityManager = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
 
-        var ssid = "Wi-Fi Connected"
-        var bssid = "00:11:22:33:44:55"
-        var rssi = -55
-        var linkSpeed = 866
-        var freq = 5180
+        var ssid = "Not Connected"
+        var bssid = ""
+        var rssi = 0
+        var linkSpeed = 0
+        var freq = 0
 
         if (wifiManager != null) {
             val wifiInfo: WifiInfo? = wifiManager.connectionInfo
@@ -76,7 +76,7 @@ object NetworkUtils {
                 if (!rawSsid.isNullOrBlank() && rawSsid != "<unknown ssid>") {
                     ssid = rawSsid.replace("\"", "")
                 }
-                if (!wifiInfo.bssid.isNullOrBlank()) {
+                if (!wifiInfo.bssid.isNullOrBlank() && wifiInfo.bssid != "02:00:00:00:00:00") {
                     bssid = wifiInfo.bssid
                 }
                 rssi = wifiInfo.rssi
@@ -88,30 +88,32 @@ object NetworkUtils {
         }
 
         // Determine Signal Level (0 to 4)
-        val level = WifiManager.calculateSignalLevel(rssi, 5)
+        val level = if (rssi != 0) WifiManager.calculateSignalLevel(rssi, 5) else 0
 
         // Read Gateway Router IP from DHCP Info
         val dhcpInfo = wifiManager?.dhcpInfo
         val gatewayIp = if (dhcpInfo != null && dhcpInfo.gateway != 0) {
             intToIp(dhcpInfo.gateway)
         } else {
-            "192.168.1.1"
+            ""
         }
 
-        val dns1 = if (dhcpInfo != null && dhcpInfo.dns1 != 0) intToIp(dhcpInfo.dns1) else "8.8.8.8"
-        val dns2 = if (dhcpInfo != null && dhcpInfo.dns2 != 0) intToIp(dhcpInfo.dns2) else "1.1.1.1"
-        val netmask = if (dhcpInfo != null && dhcpInfo.netmask != 0) intToIp(dhcpInfo.netmask) else "255.255.255.0"
+        val dns1 = if (dhcpInfo != null && dhcpInfo.dns1 != 0) intToIp(dhcpInfo.dns1) else ""
+        val dns2 = if (dhcpInfo != null && dhcpInfo.dns2 != 0) intToIp(dhcpInfo.dns2) else ""
+        val netmask = if (dhcpInfo != null && dhcpInfo.netmask != 0) intToIp(dhcpInfo.netmask) else ""
         val dhcpServer = if (dhcpInfo != null && dhcpInfo.serverAddress != 0) intToIp(dhcpInfo.serverAddress) else gatewayIp
 
         val localIp = getLocalIpAddress()
         val isConnected = isInternetAvailable(connectivityManager)
 
-        val channel = frequencyToChannel(freq)
-        val networkType = if (freq in 4900..5900) "Wi-Fi 5 GHz (802.11ac/ax)" else if (freq in 5925..7125) "Wi-Fi 6E 6 GHz" else "Wi-Fi 2.4 GHz (802.11n)"
+        val channel = if (freq > 0) frequencyToChannel(freq) else 0
+        val networkType = if (freq in 4900..5900) "Wi-Fi 5 GHz (802.11ac/ax)" else if (freq in 5925..7125) "Wi-Fi 6E 6 GHz" else if (freq in 2400..2500) "Wi-Fi 2.4 GHz (802.11n)" else ""
 
-        val routerVendor = lookupVendorByMac(bssid).let {
-            if (it == "Unknown Vendor") inferRouterBrandFromGateway(gatewayIp) else it
-        }
+        val routerVendor = if (bssid.isNotBlank()) {
+            lookupVendorByMac(bssid).let { if (it == "Unknown Vendor") inferRouterBrandFromGateway(gatewayIp) else it }
+        } else if (gatewayIp.isNotBlank()) {
+            inferRouterBrandFromGateway(gatewayIp)
+        } else ""
 
         return NetworkInfoModel(
             ssid = ssid,
@@ -122,7 +124,7 @@ object NetworkUtils {
             wifiSignalDbm = rssi,
             wifiSignalLevel = level,
             localIpAddress = localIp,
-            publicIpAddress = "103.21.126.18", // Will update asynchronously
+            publicIpAddress = "", // Updated asynchronously via fetchPublicIp
             dns1 = dns1,
             dns2 = dns2,
             dhcpServer = dhcpServer,
@@ -132,11 +134,12 @@ object NetworkUtils {
             ipv6 = getLocalIpv6Address(),
             frequencyMhz = freq,
             channel = channel,
-            linkSpeedMbps = if (linkSpeed > 0) linkSpeed else 433
+            linkSpeedMbps = if (linkSpeed > 0) linkSpeed else 0
         )
     }
 
     private fun inferRouterBrandFromGateway(gatewayIp: String): String {
+        if (gatewayIp.isBlank()) return ""
         return when {
             gatewayIp.startsWith("192.168.0.") -> "TP-Link / D-Link Router"
             gatewayIp.startsWith("192.168.1.") -> "TP-Link / Netgear Gateway"
@@ -155,9 +158,9 @@ object NetworkUtils {
             connection.connectTimeout = 3000
             connection.readTimeout = 3000
             val ip = connection.getInputStream().bufferedReader().use { it.readText() }
-            if (ip.isNotBlank()) ip.trim() else "103.21.126.18"
+            if (ip.isNotBlank()) ip.trim() else ""
         } catch (_: Exception) {
-            "103.21.126.18"
+            ""
         }
     }
 
@@ -196,56 +199,41 @@ object NetworkUtils {
         localIp: String,
         onProgress: (scanned: Int, total: Int) -> Unit
     ): List<NetworkDevice> = withContext(Dispatchers.IO) {
+        if (subnetPrefix.isBlank()) return@withContext emptyList()
         val totalHosts = 254
         val arpMap = readArpTable()
         val discoveredDevices = mutableListOf<NetworkDevice>()
 
-        // Always add Gateway Router
-        val routerVendor = "TP-Link / Main Router"
-        val routerMac = arpMap[gatewayIp] ?: "00:1A:2B:3C:4D:5E"
-        discoveredDevices.add(
-            NetworkDevice(
-                ipAddress = gatewayIp,
-                macAddress = routerMac,
-                deviceName = "Main Router Gateway ($gatewayIp)",
-                deviceType = DeviceType.ROUTER,
-                manufacturer = lookupVendorByMac(routerMac).let { if (it == "Unknown Vendor") "TP-Link Gateway" else it },
-                isOnline = true,
-                responseTimeMs = 2L,
-                isTrusted = true
-            )
-        )
-
-        // Always add Local Device (This Phone)
-        if (localIp != gatewayIp && localIp != "127.0.0.1") {
-            val localMac = getLocalMacAddress() ?: "FA:88:C2:10:99:AA"
+        // Add Gateway Router if present
+        if (gatewayIp.isNotBlank()) {
+            val routerMac = arpMap[gatewayIp] ?: ""
+            val vendor = if (routerMac.isNotBlank()) lookupVendorByMac(routerMac) else inferRouterBrandFromGateway(gatewayIp)
             discoveredDevices.add(
                 NetworkDevice(
-                    ipAddress = localIp,
-                    macAddress = localMac,
-                    deviceName = "This Phone (${Build.MODEL})",
-                    deviceType = DeviceType.PHONE,
-                    manufacturer = Build.MANUFACTURER.uppercase(),
+                    ipAddress = gatewayIp,
+                    macAddress = if (routerMac.isNotBlank()) routerMac else "N/A",
+                    deviceName = "Router Gateway ($gatewayIp)",
+                    deviceType = DeviceType.ROUTER,
+                    manufacturer = if (vendor.isNotBlank()) vendor else "Gateway",
                     isOnline = true,
-                    responseTimeMs = 1L,
+                    responseTimeMs = 2L,
                     isTrusted = true
                 )
             )
         }
 
-        // Add TP-Link Range Extender preset
-        val extenderIp = "$subnetPrefix.120"
-        if (extenderIp != gatewayIp && extenderIp != localIp) {
-            val extenderMac = "50:C7:BF:11:22:33"
+        // Add Local Device (This Phone)
+        if (localIp.isNotBlank() && localIp != gatewayIp && localIp != "127.0.0.1") {
+            val localMac = getLocalMacAddress() ?: ""
             discoveredDevices.add(
                 NetworkDevice(
-                    ipAddress = extenderIp,
-                    macAddress = extenderMac,
-                    deviceName = "TP-Link RE200 Range Extender",
-                    deviceType = DeviceType.RANGE_EXTENDER,
-                    manufacturer = "TP-Link Technologies Co., Ltd.",
+                    ipAddress = localIp,
+                    macAddress = if (localMac.isNotBlank()) localMac else "N/A",
+                    deviceName = "This Phone (${Build.MODEL})",
+                    deviceType = DeviceType.PHONE,
+                    manufacturer = Build.MANUFACTURER.uppercase(),
                     isOnline = true,
-                    responseTimeMs = 14L,
+                    responseTimeMs = 1L,
                     isTrusted = true
                 )
             )
@@ -261,7 +249,7 @@ object NetworkUtils {
                 val deferreds = (startHost..endHost).map { host ->
                     async {
                         val targetIp = "$subnetPrefix.$host"
-                        if (targetIp == gatewayIp || targetIp == localIp || targetIp == extenderIp) {
+                        if (targetIp == gatewayIp || targetIp == localIp) {
                             return@async null
                         }
 
@@ -276,20 +264,20 @@ object NetworkUtils {
                         val pingMs = (System.currentTimeMillis() - pingStart).coerceAtLeast(4L)
 
                         if (isReachable) {
-                            val mac = arpMap[targetIp] ?: generateFallbackMacForIp(targetIp)
+                            val mac = arpMap[targetIp] ?: ""
                             val hostName = try {
                                 InetAddress.getByName(targetIp).canonicalHostName
                             } catch (_: Exception) {
                                 "Device ($targetIp)"
                             }
 
-                            val vendor = lookupVendorByMac(mac)
+                            val vendor = if (mac.isNotBlank()) lookupVendorByMac(mac) else "Unknown Vendor"
                             val devType = inferDeviceType(hostName, vendor, targetIp, gatewayIp)
 
                             NetworkDevice(
                                 ipAddress = targetIp,
-                                macAddress = mac,
-                                deviceName = if (hostName != targetIp) hostName else "Connected Device ($targetIp)",
+                                macAddress = if (mac.isNotBlank()) mac else "N/A",
+                                deviceName = if (hostName != targetIp && hostName.isNotBlank()) hostName else "Device ($targetIp)",
                                 deviceType = devType,
                                 manufacturer = vendor,
                                 isOnline = true,
@@ -307,21 +295,6 @@ object NetworkUtils {
             }
         }
 
-        // Add additional sample connected devices for realistic richness if fewer than 5 found
-        if (discoveredDevices.size < 5) {
-            val sampleExtra = listOf(
-                NetworkDevice("$subnetPrefix.105", "84:25:DB:44:A2:11", "Samsung Smart TV", DeviceType.SMART_TV, "Samsung Electronics", true, 18L),
-                NetworkDevice("$subnetPrefix.112", "70:EE:50:88:99:FF", "ESP32 Smart Plug", DeviceType.IOT, "Espressif Inc.", true, 22L),
-                NetworkDevice("$subnetPrefix.145", "BC:92:6B:77:88:99", "MacBook Pro", DeviceType.LAPTOP, "Apple Inc.", true, 8L),
-                NetworkDevice("$subnetPrefix.180", "D4:AD:71:33:55:77", "CCTV Security Camera", DeviceType.CCTV, "Huawei Technologies", true, 15L)
-            )
-            for (dev in sampleExtra) {
-                if (discoveredDevices.none { it.ipAddress == dev.ipAddress }) {
-                    discoveredDevices.add(dev)
-                }
-            }
-        }
-
         discoveredDevices.distinctBy { it.ipAddress }
     }
 
@@ -330,39 +303,26 @@ object NetworkUtils {
         gatewayIp: String
     ): List<TpLinkExtender> = withContext(Dispatchers.IO) {
         val list = mutableListOf<TpLinkExtender>()
-
-        // Primary extender
-        list.add(
-            TpLinkExtender(
-                extenderName = "TP-Link RE200 AC750",
-                localIp = "$subnetPrefix.120",
-                macAddress = "50:C7:BF:11:22:33",
-                manufacturer = "TP-Link Technologies Co., Ltd.",
-                connectionStatus = "Connected - Excellent Signal",
-                signalStrengthDbm = -46,
-                firmwareVersion = "v1.4.2 Build 20231120 (Admin Login Required for Full Config)",
-                isConnectedToMainRouter = true,
-                adminLoginRequired = true,
-                modelName = "RE200 AC750 Wi-Fi Range Extender"
-            )
-        )
-
-        // Secondary extender
-        list.add(
-            TpLinkExtender(
-                extenderName = "TP-Link TL-WA850RE",
-                localIp = "$subnetPrefix.125",
-                macAddress = "18:D6:C7:A9:88:22",
-                manufacturer = "TP-Link Technologies Co., Ltd.",
-                connectionStatus = "Connected - Good Signal",
-                signalStrengthDbm = -62,
-                firmwareVersion = "v5.0.0 Build 20230510 (Admin Login Required)",
-                isConnectedToMainRouter = true,
-                adminLoginRequired = true,
-                modelName = "TL-WA850RE 300Mbps Range Extender"
-            )
-        )
-
+        val arpMap = readArpTable()
+        for ((ip, mac) in arpMap) {
+            val vendor = lookupVendorByMac(mac)
+            if (vendor.contains("TP-Link", ignoreCase = true) && ip != gatewayIp) {
+                list.add(
+                    TpLinkExtender(
+                        extenderName = "TP-Link Extender ($ip)",
+                        localIp = ip,
+                        macAddress = mac,
+                        manufacturer = vendor,
+                        connectionStatus = "Connected",
+                        signalStrengthDbm = -50,
+                        firmwareVersion = "Detected on Subnet",
+                        isConnectedToMainRouter = true,
+                        adminLoginRequired = true,
+                        modelName = "TP-Link Range Extender"
+                    )
+                )
+            }
+        }
         list
     }
 
@@ -460,13 +420,13 @@ object NetworkUtils {
                 val addrs = Collections.list(intf.inetAddresses)
                 for (addr in addrs) {
                     if (!addr.isLoopbackAddress && addr is java.net.Inet4Address) {
-                        return addr.hostAddress ?: "192.168.1.100"
+                        return addr.hostAddress ?: ""
                     }
                 }
             }
         } catch (_: Exception) {
         }
-        return "192.168.1.100"
+        return ""
     }
 
     private fun getLocalIpv6Address(): String {
@@ -476,13 +436,13 @@ object NetworkUtils {
                 val addrs = Collections.list(intf.inetAddresses)
                 for (addr in addrs) {
                     if (!addr.isLoopbackAddress && addr is java.net.Inet6Address) {
-                        return addr.hostAddress?.substringBefore("%") ?: "fe80::1"
+                        return addr.hostAddress?.substringBefore("%") ?: ""
                     }
                 }
             }
         } catch (_: Exception) {
         }
-        return "fe80::8021:a1ff:fe4b:90c1"
+        return ""
     }
 
     private fun getLocalMacAddress(): String? {
@@ -505,12 +465,7 @@ object NetworkUtils {
     }
 
     private fun generateFallbackMacForIp(ip: String): String {
-        val parts = ip.split(".")
-        if (parts.size == 4) {
-            val last = parts[3].toIntOrNull() ?: 10
-            return String.format("A4:C2:%02X:%02X:%02X:%02X", last / 2, last, (last * 3) % 255, (last * 7) % 255)
-        }
-        return "AA:BB:CC:DD:EE:FF"
+        return ""
     }
 
     private fun isInternetAvailable(connectivityManager: ConnectivityManager?): Boolean {

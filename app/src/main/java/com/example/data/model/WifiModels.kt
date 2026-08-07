@@ -14,25 +14,25 @@ enum class DeviceType(val displayName: String, val defaultIconName: String) {
 }
 
 data class NetworkInfoModel(
-    val ssid: String = "Scanning...",
-    val bssid: String = "--:--:--:--:--:--",
-    val isInternetAvailable: Boolean = true,
-    val routerGatewayIp: String = "192.168.1.1",
-    val routerBrand: String = "Auto Detect...",
-    val wifiSignalDbm: Int = -55,
-    val wifiSignalLevel: Int = 4, // 0..4
-    val localIpAddress: String = "192.168.1.100",
-    val publicIpAddress: String = "Fetching...",
-    val dns1: String = "8.8.8.8",
-    val dns2: String = "8.8.4.4",
-    val dhcpServer: String = "192.168.1.1",
-    val netmask: String = "255.255.255.0",
-    val networkType: String = "Wi-Fi (5 GHz)",
-    val ipv4: String = "192.168.1.100",
-    val ipv6: String = "fe80::1%wlan0",
-    val frequencyMhz: Int = 5180,
-    val channel: Int = 36,
-    val linkSpeedMbps: Int = 866
+    val ssid: String = "Not Connected",
+    val bssid: String = "",
+    val isInternetAvailable: Boolean = false,
+    val routerGatewayIp: String = "",
+    val routerBrand: String = "",
+    val wifiSignalDbm: Int = 0,
+    val wifiSignalLevel: Int = 0, // 0..4
+    val localIpAddress: String = "",
+    val publicIpAddress: String = "",
+    val dns1: String = "",
+    val dns2: String = "",
+    val dhcpServer: String = "",
+    val netmask: String = "",
+    val networkType: String = "",
+    val ipv4: String = "",
+    val ipv6: String = "",
+    val frequencyMhz: Int = 0,
+    val channel: Int = 0,
+    val linkSpeedMbps: Int = 0
 )
 
 data class NetworkDevice(
@@ -96,12 +96,12 @@ data class SpeedTestResult(
 )
 
 data class NetworkQualityScore(
-    val grade: String = "A+",
-    val ratingText: String = "Excellent for 4K Streaming & Ultra-Low Latency Gaming",
-    val latencyScore: Int = 95,
-    val speedScore: Int = 90,
-    val securityScore: Int = 98,
-    val stabilityScore: Int = 94
+    val grade: String = "--",
+    val ratingText: String = "Not Tested Yet",
+    val latencyScore: Int = 0,
+    val speedScore: Int = 0,
+    val securityScore: Int = 0,
+    val stabilityScore: Int = 0
 )
 
 enum class NotificationType {

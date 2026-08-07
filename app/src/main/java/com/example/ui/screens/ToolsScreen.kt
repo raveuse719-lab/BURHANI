@@ -476,7 +476,7 @@ fun ChannelInfoTab(networkInfo: com.example.data.model.NetworkInfoModel) {
 
 @Composable
 fun QualityCheckTab(
-    networkQuality: com.example.data.model.NetworkQualityScore,
+    networkQuality: com.example.data.model.NetworkQualityScore?,
     networkInfo: com.example.data.model.NetworkInfoModel
 ) {
     LazyColumn(
@@ -496,42 +496,50 @@ fun QualityCheckTab(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = WifiPrimary,
-                            modifier = Modifier.size(64.dp)
+                    if (networkQuality == null) {
+                        Text(
+                            text = "No quality grade calculated yet. Run a Speed Test or Ping test in the Network Tools tab to evaluate network grade.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = networkQuality.grade,
-                                    style = MaterialTheme.typography.headlineMedium.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
+                            Surface(
+                                shape = CircleShape,
+                                color = WifiPrimary,
+                                modifier = Modifier.size(64.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = networkQuality.grade,
+                                        style = MaterialTheme.typography.headlineMedium.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
                                     )
+                                }
+                            }
+
+                            Column(modifier = Modifier.weight(1f).padding(start = 16.dp)) {
+                                Text(
+                                    text = networkQuality.ratingText,
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }
 
-                        Column(modifier = Modifier.weight(1f).padding(start = 16.dp)) {
-                            Text(
-                                text = networkQuality.ratingText,
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        QualityMetricBar("Latency Rating", networkQuality.latencyScore)
+                        QualityMetricBar("Bandwidth Speed Rating", networkQuality.speedScore)
+                        QualityMetricBar("Security Status", networkQuality.securityScore)
+                        QualityMetricBar("Signal Stability", networkQuality.stabilityScore)
                     }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    QualityMetricBar("Latency Rating", networkQuality.latencyScore)
-                    QualityMetricBar("Bandwidth Speed Rating", networkQuality.speedScore)
-                    QualityMetricBar("Security Status", networkQuality.securityScore)
-                    QualityMetricBar("Signal Stability", networkQuality.stabilityScore)
                 }
             }
         }

@@ -37,8 +37,8 @@ class WifiInspectorRepository(
                 userProfileDao.insertOrUpdateProfile(
                     UserProfileEntity(
                         id = 1,
-                        phoneNumber = "+1 555-0199",
-                        displayName = "Guest Inspector",
+                        phoneNumber = "",
+                        displayName = "User",
                         isLoggedIn = false,
                         isGuestMode = true,
                         themePreference = "SYSTEM"

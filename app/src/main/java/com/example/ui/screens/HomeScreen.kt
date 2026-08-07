@@ -94,9 +94,9 @@ fun HomeScreen(
     val displayedDevices by viewModel.displayedDevices.collectAsState()
     val userProfile by viewModel.userProfile.collectAsState()
 
-    val totalDevices = displayedDevices.size.let { if (it > 0) it else 5 }
-    val trustedCount = displayedDevices.count { it.isTrusted }.let { if (it > 0) it else 3 }
-    val unknownCount = (totalDevices - trustedCount).coerceAtLeast(0)
+    val totalDevices = displayedDevices.size
+    val trustedCount = displayedDevices.count { it.isTrusted }
+    val unknownCount = displayedDevices.count { !it.isTrusted }
 
     LazyColumn(
         modifier = Modifier
