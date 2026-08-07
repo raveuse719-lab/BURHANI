@@ -4,28 +4,26 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.example.data.dao.ScanHistoryDao
-import com.example.data.dao.TrustedDeviceDao
-import com.example.data.dao.UserProfileDao
-import com.example.data.entity.ScanDeviceHistoryEntity
-import com.example.data.entity.ScanHistoryEntity
-import com.example.data.entity.TrustedDeviceEntity
-import com.example.data.entity.UserProfileEntity
+import com.example.data.dao.AppSettingsDao
+import com.example.data.dao.PrintJobDao
+import com.example.data.dao.PrinterDao
+import com.example.data.entity.AppSettingsEntity
+import com.example.data.entity.PrintJobEntity
+import com.example.data.entity.PrinterEntity
 
 @Database(
     entities = [
-        UserProfileEntity::class,
-        TrustedDeviceEntity::class,
-        ScanHistoryEntity::class,
-        ScanDeviceHistoryEntity::class
+        PrinterEntity::class,
+        PrintJobEntity::class,
+        AppSettingsEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun userProfileDao(): UserProfileDao
-    abstract fun trustedDeviceDao(): TrustedDeviceDao
-    abstract fun scanHistoryDao(): ScanHistoryDao
+    abstract fun printerDao(): PrinterDao
+    abstract fun printJobDao(): PrintJobDao
+    abstract fun appSettingsDao(): AppSettingsDao
 
     companion object {
         @Volatile
@@ -36,7 +34,7 @@ abstract class AppDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "wifi_inspector_db"
+                    "bi_wifi_print_db"
                 ).fallbackToDestructiveMigration().build()
                 INSTANCE = instance
                 instance

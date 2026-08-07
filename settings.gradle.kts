@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "WiFiInspector"
+rootProject.name = "BI WiFi Print"
 
 include(":app")

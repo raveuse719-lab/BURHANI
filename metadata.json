@@ -1,7 +1,8 @@
 {
-  "name": "WiFi Inspector",
-  "description": "Modern Wi-Fi Inspector & Local Network Scanner app with device discovery, range extender detection, speed test, ping tool, router info, and security alerts.",
+  "name": "BI WiFi Print",
+  "description": "Professional network printer discovery, PC print server client, multi-format file preview, and direct wireless printing app for Android.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
+
 

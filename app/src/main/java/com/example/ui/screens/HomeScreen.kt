@@ -8,7 +8,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,22 +21,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Devices
-import androidx.compose.material.icons.filled.Dns
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.Print
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Router
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material.icons.filled.WifiTethering
+import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -62,41 +61,39 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.model.DeviceType
-import com.example.data.model.NetworkDevice
-import com.example.data.model.NetworkInfoModel
-import com.example.ui.WifiViewModel
+import com.example.data.entity.PrinterEntity
+import com.example.data.model.PrintableFile
+import com.example.ui.PrintUiState
+import com.example.ui.PrintViewModel
 import com.example.ui.theme.WifiAlertRed
-import com.example.ui.theme.WifiCardDark
-import com.example.ui.theme.WifiCardLight
 import com.example.ui.theme.WifiPrimary
 import com.example.ui.theme.WifiSecondary
 import com.example.ui.theme.WifiSuccessGreen
 import com.example.ui.theme.WifiWarningAmber
+import com.example.util.DocumentPreviewEngine
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 @Composable
 fun HomeScreen(
-    viewModel: WifiViewModel,
-    onNavigateToScan: () -> Unit,
-    onNavigateToSpeedTest: () -> Unit,
-    onNavigateToExtenders: () -> Unit,
-    onNavigateToTools: () -> Unit
+    viewModel: PrintViewModel,
+    onNavigateToDiscovery: () -> Unit,
+    onNavigateToFilePicker: () -> Unit,
+    onNavigateToPcServer: () -> Unit,
+    onNavigateToPreview: () -> Unit,
+    onNavigateToHistory: () -> Unit
 ) {
     val context = LocalContext.current
-    val networkInfo by viewModel.networkInfo.collectAsState()
-    val isScanning by viewModel.isScanning.collectAsState()
-    val scanProgress by viewModel.scanProgress.collectAsState()
-    val displayedDevices by viewModel.displayedDevices.collectAsState()
-    val userProfile by viewModel.userProfile.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+    val lastJob by viewModel.lastPrintJob.collectAsState()
+    val completedCount by viewModel.completedJobsCount.collectAsState()
 
-    val totalDevices = displayedDevices.size
-    val trustedCount = displayedDevices.count { it.isTrusted }
-    val unknownCount = displayedDevices.count { !it.isTrusted }
+    val activePrinter = uiState.activePrinter
+    val networkInfo = uiState.networkInfo
 
     LazyColumn(
         modifier = Modifier
@@ -106,7 +103,7 @@ fun HomeScreen(
     ) {
         item { Spacer(modifier = Modifier.height(8.dp)) }
 
-        // Top App Bar Greeting
+        // Top Header
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -115,17 +112,28 @@ fun HomeScreen(
             ) {
                 Column {
                     Text(
-                        text = "WiFi Inspector",
+                        text = "BI WiFi Print",
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
                     )
-                    Text(
-                        text = if (userProfile?.isLoggedIn == true) "Logged in as ${userProfile?.displayName}" else "Guest Mode - Instant Local Scan",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(if (networkInfo.isConnected) WifiSuccessGreen else WifiAlertRed)
+                        )
+                        Text(
+                            text = "${networkInfo.ssid} (${networkInfo.localIp})",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
                 IconButton(
@@ -137,27 +145,35 @@ fun HomeScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
-                        contentDescription = "Refresh Wi-Fi",
+                        contentDescription = "Refresh Network",
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
         }
 
-        // Hero Wi-Fi Radar Hero Banner
+        // Active Printer Hero Card
         item {
-            HeroWifiCard(
-                networkInfo = networkInfo,
-                isScanning = isScanning,
-                scanProgress = scanProgress,
-                onStartScan = { viewModel.startNetworkScan(context) }
+            HeroActivePrinterCard(
+                activePrinter = activePrinter,
+                isScanning = uiState.isScanning,
+                scanProgress = uiState.scanProgress,
+                onScanClick = onNavigateToDiscovery,
+                onTestPrintClick = {
+                    val file = uiState.selectedFile
+                    if (file != null) {
+                        onNavigateToPreview()
+                    } else {
+                        onNavigateToFilePicker()
+                    }
+                }
             )
         }
 
         // Quick Actions Row
         item {
             Text(
-                text = "Quick Network Actions",
+                text = "Quick Actions",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onBackground
             )
@@ -166,186 +182,192 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                QuickActionChip(
+                QuickActionCard(
                     modifier = Modifier.weight(1f),
-                    title = "Scan Network",
-                    icon = Icons.Default.WifiTethering,
-                    containerColor = WifiPrimary,
-                    onClick = onNavigateToScan
+                    title = "Scan Printers",
+                    subtitle = "Auto LAN Scan",
+                    icon = Icons.Default.Search,
+                    color = WifiPrimary,
+                    onClick = onNavigateToDiscovery
                 )
-                QuickActionChip(
+                QuickActionCard(
                     modifier = Modifier.weight(1f),
-                    title = "Speed Test",
-                    icon = Icons.Default.Speed,
-                    containerColor = WifiSecondary,
-                    onClick = onNavigateToSpeedTest
+                    title = "Print File",
+                    subtitle = "PDF/Docs/Image",
+                    icon = Icons.Default.InsertDriveFile,
+                    color = WifiSecondary,
+                    onClick = onNavigateToFilePicker
                 )
-                QuickActionChip(
+                QuickActionCard(
                     modifier = Modifier.weight(1f),
-                    title = "TP-Link Extenders",
-                    icon = Icons.Default.Router,
-                    containerColor = Color(0xFF0284C7),
-                    onClick = onNavigateToExtenders
+                    title = "PC Server",
+                    subtitle = "USB Shared PC",
+                    icon = Icons.Default.Tv,
+                    color = Color(0xFF0284C7),
+                    onClick = onNavigateToPcServer
+                )
+                QuickActionCard(
+                    modifier = Modifier.weight(1f),
+                    title = "QR Pairing",
+                    subtitle = "Scan Printer QR",
+                    icon = Icons.Default.QrCodeScanner,
+                    color = Color(0xFF8B5CF6),
+                    onClick = { viewModel.setQrDialogVisible(true) }
                 )
             }
         }
 
-        // Dashboard Metrics Grid
+        // Dashboard Statistics Summary
         item {
             Text(
-                text = "Network Dashboard Summary",
+                text = "Print Activity Statistics",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(modifier = Modifier.height(8.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    MetricCard(
-                        modifier = Modifier.weight(1f),
-                        title = "Connected Devices",
-                        value = "$totalDevices Devices",
-                        subtitle = "Discovered on Subnet",
-                        icon = Icons.Default.Devices,
-                        accentColor = WifiPrimary
-                    )
-                    MetricCard(
-                        modifier = Modifier.weight(1f),
-                        title = "Trusted Devices",
-                        value = "$trustedCount Trusted",
-                        subtitle = "$unknownCount Unknown Alerts",
-                        icon = Icons.Default.VerifiedUser,
-                        accentColor = WifiSuccessGreen
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    MetricCard(
-                        modifier = Modifier.weight(1f),
-                        title = "Gateway Router Status",
-                        value = "Online",
-                        subtitle = networkInfo.routerGatewayIp,
-                        icon = Icons.Default.Router,
-                        accentColor = WifiSuccessGreen
-                    )
-                    MetricCard(
-                        modifier = Modifier.weight(1f),
-                        title = "Wi-Fi Signal Strength",
-                        value = "${networkInfo.wifiSignalDbm} dBm",
-                        subtitle = "Level ${networkInfo.wifiSignalLevel}/4 (${networkInfo.networkType})",
-                        icon = Icons.Default.Wifi,
-                        accentColor = WifiSecondary
-                    )
-                }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                MetricCard(
+                    modifier = Modifier.weight(1f),
+                    title = "Total Prints",
+                    value = "$completedCount Jobs",
+                    subtitle = "Completed successfully",
+                    icon = Icons.Default.Print,
+                    accentColor = WifiPrimary
+                )
+                MetricCard(
+                    modifier = Modifier.weight(1f),
+                    title = "Printer Status",
+                    value = activePrinter?.status ?: "Disconnected",
+                    subtitle = activePrinter?.name ?: "No printer connected",
+                    icon = Icons.Default.Devices,
+                    accentColor = if (activePrinter?.status == "Online") WifiSuccessGreen else WifiWarningAmber
+                )
             }
         }
 
-        // Detailed Auto-Detected Router Information Card
+        // Last Printed File Card with 1-Click Re-Print
         item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("router_info_card"),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Dns,
-                            contentDescription = "Router Info",
-                            tint = WifiPrimary
+            if (lastJob != null) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("last_job_card"),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Description,
+                                    contentDescription = "Last Print",
+                                    tint = WifiPrimary
+                                )
+                                Text(
+                                    text = "Recent Print Job",
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                                )
+                            }
+                            Text(
+                                text = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()).format(Date(lastJob!!.timestamp)),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Text(
+                            text = lastJob!!.fileName,
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "Auto-Detected Router & Gateway Info",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface
+                            text = "${lastJob!!.fileType} • ${lastJob!!.pagesCount} pages • ${lastJob!!.copies} copies • ${lastJob!!.printerName}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            OutlinedButton(
+                                onClick = onNavigateToHistory,
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text("View Full History")
+                            }
+                        }
                     }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    RouterInfoRow("Gateway Router IP", networkInfo.routerGatewayIp)
-                    RouterInfoRow("Router Brand / Vendor", networkInfo.routerBrand)
-                    RouterInfoRow("Local IPv4 Address", networkInfo.localIpAddress)
-                    RouterInfoRow("Local IPv6 Address", networkInfo.ipv6)
-                    RouterInfoRow("Public IP Address", networkInfo.publicIpAddress)
-                    RouterInfoRow("Primary DNS", networkInfo.dns1)
-                    RouterInfoRow("Secondary DNS", networkInfo.dns2)
-                    RouterInfoRow("DHCP Server", networkInfo.dhcpServer)
-                    RouterInfoRow("Network Subnet Mask", networkInfo.netmask)
-                    RouterInfoRow("Wi-Fi Frequency / Channel", "${networkInfo.frequencyMhz} MHz (Channel ${networkInfo.channel})")
-                    RouterInfoRow("Link Speed", "${networkInfo.linkSpeedMbps} Mbps")
                 }
             }
         }
 
-        // TP-Link Range Extender Auto-Detect Teaser Banner
+        // Select Document Action Card
         item {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onNavigateToExtenders() }
-                    .testTag("tplink_banner_card"),
+                    .clickable { onNavigateToFilePicker() },
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.weight(1f)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Surface(
                             shape = CircleShape,
-                            color = WifiPrimary,
-                            modifier = Modifier.size(42.dp)
+                            color = WifiPrimary.copy(alpha = 0.12f),
+                            modifier = Modifier.size(44.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
-                                    imageVector = Icons.Default.Router,
+                                    imageVector = Icons.Default.InsertDriveFile,
                                     contentDescription = null,
-                                    tint = Color.White
+                                    tint = WifiPrimary
                                 )
                             }
                         }
                         Column {
                             Text(
-                                text = "TP-Link Extenders Detected",
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                text = "Select Document to Print",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                             )
                             Text(
-                                text = "Auto-discovered local range extenders & status.",
+                                text = "Choose PDF, DOCX, Image or Text file",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
-
                     Icon(
                         imageVector = Icons.Default.ArrowForward,
-                        contentDescription = "Open Extenders",
-                        tint = WifiPrimary
+                        contentDescription = "Browse",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -356,16 +378,17 @@ fun HomeScreen(
 }
 
 @Composable
-fun HeroWifiCard(
-    networkInfo: NetworkInfoModel,
+fun HeroActivePrinterCard(
+    activePrinter: PrinterEntity?,
     isScanning: Boolean,
-    scanProgress: Float,
-    onStartScan: () -> Unit
+    scanProgress: Pair<Int, Int>,
+    onScanClick: () -> Unit,
+    onTestPrintClick: () -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 0.95f,
-        targetValue = 1.05f,
+        initialValue = 0.96f,
+        targetValue = 1.04f,
         animationSpec = infiniteRepeatable(
             animation = tween(1200, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
@@ -376,9 +399,8 @@ fun HeroWifiCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .testTag("hero_wifi_card"),
+            .testTag("hero_printer_card"),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Unspecified),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Box(
@@ -409,10 +431,12 @@ fun HeroWifiCard(
                                 .scale(if (isScanning) pulseScale else 1f)
                                 .size(12.dp)
                                 .clip(CircleShape)
-                                .background(if (networkInfo.isInternetAvailable) WifiSuccessGreen else WifiAlertRed)
+                                .background(
+                                    if (activePrinter?.status == "Online") WifiSuccessGreen else WifiAlertRed
+                                )
                         )
                         Text(
-                            text = if (networkInfo.isInternetAvailable) "Internet Connected" else "No Internet",
+                            text = if (activePrinter != null) "Connected Printer" else "No Printer Selected",
                             style = MaterialTheme.typography.labelLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -425,7 +449,7 @@ fun HeroWifiCard(
                         color = Color.White.copy(alpha = 0.2f)
                     ) {
                         Text(
-                            text = networkInfo.networkType,
+                            text = activePrinter?.protocol ?: "LAN Discovery",
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
                             color = Color.White
@@ -436,17 +460,20 @@ fun HeroWifiCard(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = networkInfo.ssid,
+                    text = activePrinter?.name ?: "Tap 'Scan Printers' to discover",
                     style = MaterialTheme.typography.headlineSmall.copy(
                         fontWeight = FontWeight.Bold,
                         color = Color.White
-                    )
+                    ),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "BSSID: ${networkInfo.bssid} • Link: ${networkInfo.linkSpeedMbps} Mbps",
+                    text = if (activePrinter != null) "IP: ${activePrinter.ipAddress}:${activePrinter.port} • Signal: ${activePrinter.signalMs}ms • Location: ${activePrinter.location}"
+                    else "Connect phone and printer to same Wi-Fi network",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.White.copy(alpha = 0.85f)
                 )
@@ -460,19 +487,14 @@ fun HeroWifiCard(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "Scanning Subnet...",
+                                text = "Scanning Subnet (${scanProgress.first}/${scanProgress.second})...",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.White
-                            )
-                            Text(
-                                text = "${(scanProgress * 100).toInt()}%",
-                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                                 color = Color.White
                             )
                         }
                         Spacer(modifier = Modifier.height(6.dp))
                         LinearProgressIndicator(
-                            progress = { scanProgress },
+                            progress = { if (scanProgress.second > 0) scanProgress.first.toFloat() / scanProgress.second else 0f },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(6.dp)
@@ -484,28 +506,60 @@ fun HeroWifiCard(
                     }
                 }
 
-                Button(
-                    onClick = onStartScan,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .testTag("start_scan_hero_button"),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White,
-                        contentColor = WifiPrimary
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.WifiTethering,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = if (isScanning) "Scanning Subnet..." else "Scan Connected Wi-Fi Network",
-                        fontWeight = FontWeight.Bold
-                    )
+                    Button(
+                        onClick = onScanClick,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .testTag("scan_printers_button"),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White,
+                            contentColor = WifiPrimary
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isScanning) "Scanning..." else "Scan Printers",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+
+                    if (activePrinter != null) {
+                        OutlinedButton(
+                            onClick = onTestPrintClick,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp)
+                                .testTag("test_print_button"),
+                            shape = RoundedCornerShape(14.dp),
+                            border = ButtonDefaults.outlinedButtonBorder.copy(brush = Brush.linearGradient(listOf(Color.White, Color.White)))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Print,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Test Print",
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -513,22 +567,23 @@ fun HeroWifiCard(
 }
 
 @Composable
-fun QuickActionChip(
+fun QuickActionCard(
     modifier: Modifier = Modifier,
     title: String,
+    subtitle: String,
     icon: ImageVector,
-    containerColor: Color,
+    color: Color,
     onClick: () -> Unit
 ) {
     Surface(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .clickable { onClick() },
-        color = containerColor,
-        shape = RoundedCornerShape(14.dp)
+        color = color,
+        shape = RoundedCornerShape(16.dp)
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(10.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -538,12 +593,93 @@ fun QuickActionChip(
                 tint = Color.White,
                 modifier = Modifier.size(24.dp)
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                 color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                color = Color.White.copy(alpha = 0.8f),
                 maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+fun SampleFileItem(
+    file: PrintableFile,
+    onSelect: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onSelect() }
+            .testTag("sample_file_item_${file.name}"),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = when (file.type) {
+                        "PDF" -> Color(0xFFEF4444)
+                        "DOCX" -> Color(0xFF3B82F6)
+                        "XLSX" -> Color(0xFF10B981)
+                        "JPG" -> Color(0xFFF59E0B)
+                        else -> WifiPrimary
+                    },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = file.type,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        )
+                    }
+                }
+
+                Column {
+                    Text(
+                        text = file.name,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "${file.pagesCount} page(s) • ${file.sizeBytes / 1024} KB • Instant Test",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Icon(
+                imageVector = Icons.Default.ArrowForward,
+                contentDescription = "Print File",
+                tint = WifiPrimary
             )
         }
     }
@@ -561,12 +697,9 @@ fun MetricCard(
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -577,45 +710,37 @@ fun MetricCard(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = accentColor,
-                    modifier = Modifier.size(20.dp)
-                )
+                Surface(
+                    shape = CircleShape,
+                    color = accentColor.copy(alpha = 0.15f),
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = accentColor,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
             }
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = value,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
 }
 
-@Composable
-fun RouterInfoRow(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
-}

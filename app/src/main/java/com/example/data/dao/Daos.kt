@@ -4,65 +4,73 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.example.data.entity.ScanDeviceHistoryEntity
-import com.example.data.entity.ScanHistoryEntity
-import com.example.data.entity.TrustedDeviceEntity
-import com.example.data.entity.UserProfileEntity
+import com.example.data.entity.AppSettingsEntity
+import com.example.data.entity.PrintJobEntity
+import com.example.data.entity.PrinterEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
-interface UserProfileDao {
-    @Query("SELECT * FROM user_profiles WHERE id = 1")
-    fun getProfileFlow(): Flow<UserProfileEntity?>
+interface PrinterDao {
+    @Query("SELECT * FROM printers ORDER BY isFavorite DESC, addedTimestamp DESC")
+    fun getAllPrintersFlow(): Flow<List<PrinterEntity>>
 
-    @Query("SELECT * FROM user_profiles WHERE id = 1")
-    suspend fun getProfile(): UserProfileEntity?
+    @Query("SELECT * FROM printers WHERE isFavorite = 1")
+    fun getFavoritePrintersFlow(): Flow<List<PrinterEntity>>
+
+    @Query("SELECT * FROM printers WHERE id = :id LIMIT 1")
+    suspend fun getPrinterById(id: String): PrinterEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertOrUpdateProfile(profile: UserProfileEntity)
+    suspend fun insertOrUpdatePrinter(printer: PrinterEntity)
 
-    @Query("UPDATE user_profiles SET themePreference = :theme WHERE id = 1")
-    suspend fun updateThemePreference(theme: String)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPrinters(printers: List<PrinterEntity>)
 
-    @Query("UPDATE user_profiles SET alertNewDevice = :newDev, alertDisconnect = :disc, alertOffline = :off WHERE id = 1")
-    suspend fun updateNotificationSettings(newDev: Boolean, disc: Boolean, off: Boolean)
+    @Query("UPDATE printers SET isFavorite = :isFav WHERE id = :id")
+    suspend fun updateFavoriteStatus(id: String, isFav: Boolean)
+
+    @Query("UPDATE printers SET status = :status, signalMs = :signalMs WHERE id = :id")
+    suspend fun updatePrinterStatus(id: String, status: String, signalMs: Long)
+
+    @Query("DELETE FROM printers WHERE id = :id")
+    suspend fun deletePrinterById(id: String)
 }
 
 @Dao
-interface TrustedDeviceDao {
-    @Query("SELECT * FROM trusted_devices ORDER BY lastSeenTimestamp DESC")
-    fun getAllDevicesFlow(): Flow<List<TrustedDeviceEntity>>
+interface PrintJobDao {
+    @Query("SELECT * FROM print_jobs ORDER BY timestamp DESC")
+    fun getAllPrintJobsFlow(): Flow<List<PrintJobEntity>>
 
-    @Query("SELECT * FROM trusted_devices WHERE macAddress = :mac LIMIT 1")
-    suspend fun getDeviceByMac(mac: String): TrustedDeviceEntity?
+    @Query("SELECT * FROM print_jobs ORDER BY timestamp DESC LIMIT 1")
+    fun getLastPrintJobFlow(): Flow<PrintJobEntity?>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertOrUpdateDevice(device: TrustedDeviceEntity)
-
-    @Query("DELETE FROM trusted_devices WHERE macAddress = :mac")
-    suspend fun deleteDeviceByMac(mac: String)
-}
-
-@Dao
-interface ScanHistoryDao {
-    @Query("SELECT * FROM scan_history ORDER BY timestamp DESC")
-    fun getAllScanHistoryFlow(): Flow<List<ScanHistoryEntity>>
+    @Query("SELECT COUNT(*) FROM print_jobs WHERE status = 'Completed'")
+    fun getCompletedJobsCountFlow(): Flow<Int>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertScanHistory(history: ScanHistoryEntity): Long
+    suspend fun insertPrintJob(job: PrintJobEntity): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertScanDeviceHistory(devices: List<ScanDeviceHistoryEntity>)
+    @Query("UPDATE print_jobs SET status = :status, errorMessage = :errorMsg WHERE id = :id")
+    suspend fun updateJobStatus(id: Int, status: String, errorMsg: String? = null)
 
-    @Query("SELECT * FROM scan_device_history WHERE historyId = :historyId")
-    suspend fun getDevicesForHistory(historyId: Int): List<ScanDeviceHistoryEntity>
+    @Query("DELETE FROM print_jobs WHERE id = :id")
+    suspend fun deleteJobById(id: Int)
 
-    @Query("DELETE FROM scan_history WHERE id = :id")
-    suspend fun deleteHistoryById(id: Int)
-
-    @Query("DELETE FROM scan_history")
+    @Query("DELETE FROM print_jobs")
     suspend fun clearAllHistory()
+}
 
-    @Query("DELETE FROM scan_device_history")
-    suspend fun clearAllDeviceHistory()
+@Dao
+interface AppSettingsDao {
+    @Query("SELECT * FROM app_settings WHERE id = 1")
+    fun getSettingsFlow(): Flow<AppSettingsEntity?>
+
+    @Query("SELECT * FROM app_settings WHERE id = 1")
+    suspend fun getSettings(): AppSettingsEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOrUpdateSettings(settings: AppSettingsEntity)
+
+    @Query("UPDATE app_settings SET themePreference = :theme WHERE id = 1")
+    suspend fun updateThemePreference(theme: String)
 }

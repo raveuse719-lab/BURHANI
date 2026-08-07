@@ -1,6 +1,5 @@
 package com.example.ui.screens
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,42 +17,36 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.VerifiedUser
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.filled.Print
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.example.data.entity.ScanHistoryEntity
-import com.example.ui.WifiViewModel
+import androidx.compose.ui.unit.sp
+import com.example.data.entity.PrintJobEntity
+import com.example.ui.PrintViewModel
 import com.example.ui.theme.WifiAlertRed
 import com.example.ui.theme.WifiPrimary
 import com.example.ui.theme.WifiSuccessGreen
@@ -64,18 +57,10 @@ import java.util.Locale
 
 @Composable
 fun HistoryProfileScreen(
-    viewModel: WifiViewModel
+    viewModel: PrintViewModel
 ) {
-    val context = LocalContext.current
-    val userProfile by viewModel.userProfile.collectAsState()
-    val scanHistory by viewModel.scanHistory.collectAsState()
-    val notifications by viewModel.notifications.collectAsState()
-
-    var showOtpDialog by remember { mutableStateOf(false) }
-
-    var alertNewDevice by remember { mutableStateOf(userProfile?.alertNewDevice ?: true) }
-    var alertDisconnect by remember { mutableStateOf(userProfile?.alertDisconnect ?: true) }
-    var alertOffline by remember { mutableStateOf(userProfile?.alertOffline ?: true) }
+    val printJobs by viewModel.allPrintJobs.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
     LazyColumn(
         modifier = Modifier
@@ -85,307 +70,301 @@ fun HistoryProfileScreen(
     ) {
         item { Spacer(modifier = Modifier.height(12.dp)) }
 
-        // User Auth Profile Card
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("auth_profile_card"),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = WifiPrimary,
-                                modifier = Modifier.size(52.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.Person,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                }
-                            }
-
-                            Column {
-                                Text(
-                                    text = if (userProfile?.isLoggedIn == true) (userProfile?.displayName ?: "User") else "Guest Session",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = if (userProfile?.isLoggedIn == true) (userProfile?.phoneNumber ?: "") else "Mobile OTP Login Optional",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-
-                        Button(
-                            onClick = {
-                                if (userProfile?.isLoggedIn == true) {
-                                    viewModel.logoutOrGuest()
-                                    Toast.makeText(context, "Logged out to Guest Mode", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    showOtpDialog = true
-                                }
-                            },
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.testTag("auth_action_button")
-                        ) {
-                            Text(text = if (userProfile?.isLoggedIn == true) "Logout" else "OTP Login")
-                        }
-                    }
-                }
-            }
-        }
-
-        // Notification Settings
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.NotificationsActive, contentDescription = null, tint = WifiPrimary)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Alert & Notification Settings",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    SettingSwitchRow("Alert when new device connects", alertNewDevice) {
-                        alertNewDevice = it
-                        viewModel.updateNotificationSettings(alertNewDevice, alertDisconnect, alertOffline)
-                    }
-
-                    SettingSwitchRow("Alert when trusted device disconnects", alertDisconnect) {
-                        alertDisconnect = it
-                        viewModel.updateNotificationSettings(alertNewDevice, alertDisconnect, alertOffline)
-                    }
-
-                    SettingSwitchRow("Alert when internet connection lost", alertOffline) {
-                        alertOffline = it
-                        viewModel.updateNotificationSettings(alertNewDevice, alertDisconnect, alertOffline)
-                    }
-                }
-            }
-        }
-
-        // Scan History Header
+        // Header Title
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = Icons.Default.History, contentDescription = null, tint = WifiPrimary)
-                    Spacer(modifier = Modifier.width(8.dp))
+                Column {
                     Text(
-                        text = "Scan History Logs",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        text = "Print History & Spool Logs",
+                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        text = "Track all previous document print requests and statuses",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
-                if (scanHistory.isNotEmpty()) {
-                    TextButton(onClick = { viewModel.clearHistory() }) {
-                        Icon(imageVector = Icons.Default.DeleteSweep, contentDescription = "Clear")
+                if (printJobs.isNotEmpty()) {
+                    TextButton(
+                        onClick = { viewModel.clearPrintHistory() },
+                        modifier = Modifier.testTag("clear_history_btn")
+                    ) {
+                        Icon(imageVector = Icons.Default.DeleteSweep, contentDescription = "Clear", tint = WifiAlertRed)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Clear History")
+                        Text("Clear Logs", color = WifiAlertRed)
                     }
                 }
             }
         }
 
-        // History Items
-        if (scanHistory.isEmpty()) {
+        // Quick Stats Summary
+        item {
+            val completed = printJobs.count { it.status == "Completed" }
+            val failed = printJobs.count { it.status == "Failed" }
+            val totalPages = printJobs.filter { it.status == "Completed" }.sumOf { it.pagesCount * it.copies }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Card(
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = WifiSuccessGreen.copy(alpha = 0.12f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("Successful", style = MaterialTheme.typography.labelSmall, color = WifiSuccessGreen)
+                        Text("$completed", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = WifiSuccessGreen)
+                    }
+                }
+
+                Card(
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = WifiAlertRed.copy(alpha = 0.12f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("Failed", style = MaterialTheme.typography.labelSmall, color = WifiAlertRed)
+                        Text("$failed", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = WifiAlertRed)
+                    }
+                }
+
+                Card(
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = WifiPrimary.copy(alpha = 0.12f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("Pages Printed", style = MaterialTheme.typography.labelSmall, color = WifiPrimary)
+                        Text("$totalPages", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = WifiPrimary)
+                    }
+                }
+            }
+        }
+
+        // App Preferences Card
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(imageVector = Icons.Default.Settings, contentDescription = null, tint = WifiPrimary)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Printing Preferences",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("Default Paper Size", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                            Text("ISO A4 / Letter Standard", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Text(
+                                text = uiState.printSettings.paperSize,
+                                style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // History Log List
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(imageVector = Icons.Default.History, contentDescription = null, tint = WifiPrimary)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Recent Spool History",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+            }
+        }
+
+        if (printJobs.isEmpty()) {
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    Box(modifier = Modifier.padding(24.dp), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "No prior scan history recorded yet.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    Box(
+                        modifier = Modifier.padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.Print,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "No print jobs spooled yet",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "Select a document from the Files menu to print.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                        }
                     }
                 }
             }
         } else {
-            items(scanHistory) { history ->
-                HistoryCardItem(history = history)
+            items(printJobs) { job ->
+                PrintJobCardItem(job = job)
             }
         }
 
         item { Spacer(modifier = Modifier.height(24.dp)) }
     }
-
-    // OTP Auth Dialog
-    if (showOtpDialog) {
-        OtpLoginDialog(
-            onDismiss = { showOtpDialog = false },
-            onLoginSuccess = { phone, name ->
-                viewModel.loginWithOtp(phone, name)
-                showOtpDialog = false
-                Toast.makeText(context, "Logged in via Firebase OTP!", Toast.LENGTH_SHORT).show()
-            }
-        )
-    }
 }
 
 @Composable
-fun HistoryCardItem(history: ScanHistoryEntity) {
+fun PrintJobCardItem(job: PrintJobEntity) {
     val dateFormat = SimpleDateFormat("MMM dd, yyyy • hh:mm a", Locale.getDefault())
-    val formattedDate = dateFormat.format(Date(history.timestamp))
+    val formattedDate = dateFormat.format(Date(job.timestamp))
+
+    val statusColor = when (job.status) {
+        "Completed" -> WifiSuccessGreen
+        "Failed" -> WifiAlertRed
+        else -> WifiWarningAmber
+    }
+
+    val statusIcon = when (job.status) {
+        "Completed" -> Icons.Default.CheckCircle
+        "Failed" -> Icons.Default.Error
+        else -> Icons.Default.Print
+    }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .testTag("history_item_${history.id}"),
-        shape = RoundedCornerShape(14.dp),
+            .testTag("history_item_${job.id}"),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.InsertDriveFile,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+                    Column {
+                        Text(
+                            text = job.fileName,
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = "Printer: ${job.printerName}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = statusColor.copy(alpha = 0.15f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(imageVector = statusIcon, contentDescription = null, tint = statusColor, modifier = Modifier.size(14.dp))
+                        Text(text = job.status, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = statusColor)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = history.ssid,
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                    text = "${job.pagesCount} Page(s) • ${job.copies} Copy(ies) • ${job.paperSize} • ${job.colorMode}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = formattedDate,
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                 )
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
+            if (!job.errorMessage.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "Total Devices: ${history.totalDevicesCount}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = "New: ${history.newDevicesCount}",
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                    color = WifiWarningAmber
-                )
-                Text(
-                    text = "Gateway: ${history.gatewayIp}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = "Error: ${job.errorMessage}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = WifiAlertRed
                 )
             }
         }
     }
-}
-
-@Composable
-fun SettingSwitchRow(title: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f)
-        )
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
-    }
-}
-
-@Composable
-fun OtpLoginDialog(
-    onDismiss: () -> Unit,
-    onLoginSuccess: (phone: String, name: String) -> Unit
-) {
-    var phoneNumber by remember { mutableStateOf("+1 555-0199") }
-    var userName by remember { mutableStateOf("Inspector Admin") }
-    var otpCode by remember { mutableStateOf("") }
-    var otpSent by remember { mutableStateOf(false) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(if (!otpSent) "Firebase Mobile OTP Login" else "Enter 6-Digit OTP") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (!otpSent) {
-                    OutlinedTextField(
-                        value = userName,
-                        onValueChange = { userName = it },
-                        label = { Text("Your Name") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth().testTag("auth_name_input")
-                    )
-                    OutlinedTextField(
-                        value = phoneNumber,
-                        onValueChange = { phoneNumber = it },
-                        label = { Text("Mobile Phone Number") },
-                        leadingIcon = { Icon(imageVector = Icons.Default.Phone, contentDescription = null) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth().testTag("auth_phone_input")
-                    )
-                } else {
-                    Text("OTP sent via SMS to $phoneNumber. For instant demo use 123456.")
-                    OutlinedTextField(
-                        value = otpCode,
-                        onValueChange = { otpCode = it },
-                        label = { Text("6-Digit OTP Code") },
-                        leadingIcon = { Icon(imageVector = Icons.Default.Lock, contentDescription = null) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth().testTag("auth_otp_input")
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (!otpSent) {
-                        otpSent = true
-                    } else {
-                        onLoginSuccess(phoneNumber, userName)
-                    }
-                },
-                modifier = Modifier.testTag("auth_submit_button")
-            ) {
-                Text(if (!otpSent) "Send OTP" else "Verify OTP & Login")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
 }

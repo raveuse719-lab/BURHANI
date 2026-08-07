@@ -3,17 +3,41 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- WiFi Signal Arcs & Search Radar Icon -->
+    <!-- WiFi Signal Waves on Top -->
     <path
         android:fillColor="#38BDF8"
-        android:pathData="M54,26 C68.36,26 81.36,31.84 90.75,41.23 L83.68,48.3 C76.1,40.72 65.6,36 54,36 C42.4,36 31.9,40.72 24.32,48.3 L17.25,41.23 C26.64,31.84 39.64,26 54,26 Z" />
+        android:pathData="M38,28 C42.5,24.5 48,22.5 54,22.5 C60,22.5 65.5,24.5 70,28 L66.5,31.5 C63,28.8 58.7,27.2 54,27.2 C49.3,27.2 45,28.8 41.5,31.5 Z" />
     <path
-        android:fillColor="#0EA5E9"
-        android:pathData="M54,42 C63.94,42 72.94,46.03 79.44,52.53 L72.37,59.6 C67.66,54.89 61.16,52 54,52 C46.84,52 40.34,54.89 35.63,59.6 L28.56,52.53 C35.06,46.03 44.06,42 54,42 Z" />
+        android:fillColor="#38BDF8"
+        android:pathData="M44,34 C46.8,31.8 50.3,30.5 54,30.5 C57.7,30.5 61.2,31.8 64,34 L60.5,37.5 C58.7,36 56.4,35 54,35 C51.6,35 49.3,36 47.5,37.5 Z" />
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M54,39 C55.6,39 57,40.4 57,42 C57,43.6 55.6,45 54,45 C52.4,45 51,43.6 51,42 C51,40.4 52.4,39 54,39 Z" />
+
+    <!-- Paper Feeding In -->
+    <path
+        android:fillColor="#E2E8F0"
+        android:pathData="M38,44 H70 V52 H38 Z" />
+
+    <!-- Printer Body -->
     <path
         android:fillColor="#0284C7"
-        android:pathData="M54,58 C59.52,58 64.52,60.24 68.13,63.85 L61.06,70.92 C59.25,69.11 56.75,68 54,68 C51.25,68 48.75,69.11 46.94,70.92 L39.87,63.85 C43.48,60.24 48.48,58 54,58 Z" />
+        android:pathData="M28,52 H80 C83.3,52 86,54.7 86,58 V70 C86,73.3 83.3,76 80,76 H28 C24.7,76 22,73.3 22,70 V58 C22,54.7 24.7,52 28,52 Z" />
+
+    <!-- Status Light & Buttons -->
     <path
         android:fillColor="#38BDF8"
-        android:pathData="M54,74 C56.76,74 59,76.24 59,79 C59,81.76 56.76,84 54,84 C51.24,84 49,81.76 49,79 C49,76.24 51.24,74 54,74 Z" />
+        android:pathData="M30,58 H38 V62 H30 Z" />
+    <path
+        android:fillColor="#22C55E"
+        android:pathData="M74,60 C74,61.1 73.1,62 72,62 C70.9,62 70,61.1 70,60 C70,58.9 70.9,58 72,58 C73.1,58 74,58.9 74,60 Z" />
+
+    <!-- Output Paper Tray & Printed Page -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,68 H74 V84 H34 Z" />
+    <!-- Document Lines on Printed Page -->
+    <path
+        android:fillColor="#94A3B8"
+        android:pathData="M38,72 H70 V74 H38 Z M38,76 H64 V78 H38 Z M38,80 H58 V82 H38 Z" />
 </vector>

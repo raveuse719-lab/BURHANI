@@ -16,7 +16,7 @@ android {
   compileSdk = 35
 
   defaultConfig {
-    applicationId = "com.aistudio.wifiinspector.app"
+    applicationId = "com.aistudio.biwifiprint.app"
     minSdk = 24
     targetSdk = 35
     versionCode = 1

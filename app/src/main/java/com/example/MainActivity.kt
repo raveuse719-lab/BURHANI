@@ -9,11 +9,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.AppDatabase
-import com.example.data.WifiInspectorRepository
+import com.example.data.PrintRepository
 import com.example.ui.MainNavigationContainer
-import com.example.ui.WifiViewModel
-import com.example.ui.WifiViewModelFactory
-import com.example.ui.theme.WifiInspectorTheme
+import com.example.ui.PrintViewModel
+import com.example.ui.PrintViewModelFactory
+import com.example.ui.theme.BiWifiPrintTheme
 
 class MainActivity : ComponentActivity() {
 
@@ -21,20 +21,20 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Request runtime permissions for Location & Wi-Fi scan on startup
+        // Request runtime permissions for Wi-Fi & Nearby Devices scan on startup
         requestWifiPermissions()
 
         val database = AppDatabase.getInstance(this)
-        val repository = WifiInspectorRepository(
-            userProfileDao = database.userProfileDao(),
-            trustedDeviceDao = database.trustedDeviceDao(),
-            scanHistoryDao = database.scanHistoryDao()
+        val repository = PrintRepository(
+            printerDao = database.printerDao(),
+            printJobDao = database.printJobDao(),
+            appSettingsDao = database.appSettingsDao()
         )
-        val factory = WifiViewModelFactory(repository)
+        val factory = PrintViewModelFactory(repository)
 
         setContent {
-            WifiInspectorTheme {
-                val vm: WifiViewModel = viewModel(factory = factory)
+            BiWifiPrintTheme {
+                val vm: PrintViewModel = viewModel(factory = factory)
                 val context = androidx.compose.ui.platform.LocalContext.current
                 androidx.compose.runtime.LaunchedEffect(Unit) {
                     vm.refreshNetworkInfo(context)
@@ -54,6 +54,7 @@ class MainActivity : ComponentActivity() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permissions.add(android.Manifest.permission.POST_NOTIFICATIONS)
+            permissions.add(android.Manifest.permission.NEARBY_WIFI_DEVICES)
         }
 
         val missing = permissions.filter {
