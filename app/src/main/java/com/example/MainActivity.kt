@@ -56,6 +56,9 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permissions.add(android.Manifest.permission.POST_NOTIFICATIONS)
             permissions.add(android.Manifest.permission.NEARBY_WIFI_DEVICES)
+            permissions.add(android.Manifest.permission.READ_MEDIA_IMAGES)
+        } else {
+            permissions.add(android.Manifest.permission.READ_EXTERNAL_STORAGE)
         }
 
         val missing = permissions.filter {

@@ -1,5 +1,8 @@
 package com.example.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -97,6 +100,25 @@ fun HomeScreen(
 
     val activePrinter = uiState.activePrinter
     val networkInfo = uiState.networkInfo
+
+    val photoGalleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            val fileName = uri.lastPathSegment?.substringAfterLast("/") ?: "Gallery_Photo_${System.currentTimeMillis()}.jpg"
+            val pickedFile = PrintableFile(
+                name = fileName,
+                type = if (fileName.endsWith(".png", ignoreCase = true)) "PNG" else "JPG",
+                uriString = uri.toString(),
+                sizeBytes = 1024 * 1024L,
+                pagesCount = 1,
+                isSample = false,
+                sampleTextContent = "Mobile Photo selected from user photo gallery ($fileName)."
+            )
+            viewModel.selectFile(pickedFile)
+            onNavigateToPreview()
+        }
+    }
 
     // Auto-detect connected Wi-Fi printers on home screen load
     LaunchedEffect(Unit) {
@@ -202,6 +224,14 @@ fun HomeScreen(
             ) {
                 QuickActionCard(
                     modifier = Modifier.weight(1f),
+                    title = "Photos / Gallery",
+                    subtitle = "Print Mobile Photos",
+                    icon = Icons.Default.InsertDriveFile,
+                    color = Color(0xFFF59E0B),
+                    onClick = { photoGalleryLauncher.launch("image/*") }
+                )
+                QuickActionCard(
+                    modifier = Modifier.weight(1f),
                     title = "Scan Printers",
                     subtitle = "Auto LAN Scan",
                     icon = Icons.Default.Search,
@@ -211,8 +241,8 @@ fun HomeScreen(
                 QuickActionCard(
                     modifier = Modifier.weight(1f),
                     title = "Print File",
-                    subtitle = "PDF/Docs/Image",
-                    icon = Icons.Default.InsertDriveFile,
+                    subtitle = "PDF/Docs/Files",
+                    icon = Icons.Default.Description,
                     color = WifiSecondary,
                     onClick = onNavigateToFilePicker
                 )
@@ -223,14 +253,6 @@ fun HomeScreen(
                     icon = Icons.Default.Tv,
                     color = Color(0xFF0284C7),
                     onClick = onNavigateToPcServer
-                )
-                QuickActionCard(
-                    modifier = Modifier.weight(1f),
-                    title = "QR Pairing",
-                    subtitle = "Scan Printer QR",
-                    icon = Icons.Default.QrCodeScanner,
-                    color = Color(0xFF8B5CF6),
-                    onClick = { viewModel.setQrDialogVisible(true) }
                 )
             }
         }

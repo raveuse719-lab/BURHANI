@@ -60,6 +60,26 @@ fun FilePickerScreen(
     val context = LocalContext.current
     var selectedCategory by remember { mutableStateOf("All") }
 
+    // Photo Gallery Launcher specifically for images
+    val photoGalleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            val fileName = uri.lastPathSegment?.substringAfterLast("/") ?: "Gallery_Photo_${System.currentTimeMillis()}.jpg"
+            val pickedFile = PrintableFile(
+                name = fileName,
+                type = if (fileName.endsWith(".png", ignoreCase = true)) "PNG" else "JPG",
+                uriString = uri.toString(),
+                sizeBytes = 1024 * 1024L,
+                pagesCount = 1,
+                isSample = false,
+                sampleTextContent = "Mobile Gallery Photo selected from user gallery ($fileName)."
+            )
+            viewModel.selectFile(pickedFile)
+            onNavigateToPreview()
+        }
+    }
+
     // System Document Launcher
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -79,7 +99,7 @@ fun FilePickerScreen(
                 type = fileType,
                 uriString = uri.toString(),
                 sizeBytes = 320 * 1024L,
-                pagesCount = 2,
+                pagesCount = 1,
                 isSample = false,
                 sampleTextContent = "Contents loaded from user storage document ($fileName)."
             )
@@ -118,46 +138,75 @@ fun FilePickerScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Browse Phone Storage Button
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { filePickerLauncher.launch("*/*") }
-                .testTag("open_phone_storage_button"),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        // Storage & Gallery Actions Row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Row(
+            // Mobile Photo Gallery Button
+            Card(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .weight(1f)
+                    .clickable { photoGalleryLauncher.launch("image/*") }
+                    .testTag("open_photo_gallery_button"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = WifiPrimary.copy(alpha = 0.12f))
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.InsertDriveFile,
+                        contentDescription = "Photos Gallery",
+                        tint = WifiPrimary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Photo Gallery",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Pick photos from Gallery",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            // Phone Storage Documents Button
+            Card(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { filePickerLauncher.launch("*/*") }
+                    .testTag("open_phone_storage_button"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    horizontalAlignment = Alignment.Start
                 ) {
                     Icon(
                         imageVector = Icons.Default.FolderOpen,
-                        contentDescription = "Browse",
-                        tint = WifiPrimary,
-                        modifier = Modifier.size(32.dp)
+                        contentDescription = "Browse Files",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
                     )
-                    Column {
-                        Text(
-                            text = "Browse Phone Storage",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                        Text(
-                            text = "Pick file from Downloads, Documents, or Photos",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                        )
-                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "All Files / PDFs",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        text = "Browse Device Files",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    )
                 }
-                Icon(Icons.Default.ArrowForward, contentDescription = null, tint = WifiPrimary)
             }
         }
 
