@@ -20,43 +20,35 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Devices
-import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.outlined.StarOutline
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -68,11 +60,10 @@ import com.example.data.entity.PrinterEntity
 import com.example.ui.PrintViewModel
 import com.example.ui.theme.WifiAlertRed
 import com.example.ui.theme.WifiPrimary
-import com.example.ui.theme.WifiSecondary
 import com.example.ui.theme.WifiSuccessGreen
 
 @Composable
-fun ScannerScreen(
+fun PrinterDiscoveryScreen(
     viewModel: PrintViewModel,
     onNavigateToPreview: () -> Unit
 ) {
@@ -85,12 +76,16 @@ fun ScannerScreen(
     val isScanning = uiState.isScanning
     val scanProgress = uiState.scanProgress
     val activePrinter = uiState.activePrinter
+    val networkInfo = uiState.networkInfo
 
     // Filter printers
     val filteredPrinters = allPrinters.filter { p ->
-        val matchesSearch = p.name.contains(searchQuery, ignoreCase = true) || p.ipAddress.contains(searchQuery)
+        val matchesSearch = p.name.contains(searchQuery, ignoreCase = true) ||
+                p.ipAddress.contains(searchQuery) ||
+                p.brand.contains(searchQuery, ignoreCase = true) ||
+                p.model.contains(searchQuery, ignoreCase = true)
         val matchesFilter = when (activeFilter) {
-            "Direct IPP/RAW" -> !p.isPcServer
+            "Direct IPP/AirPrint" -> p.protocol.contains("IPP", ignoreCase = true) || p.protocol.contains("AirPrint", ignoreCase = true)
             "PC Server" -> p.isPcServer
             "Favorites" -> p.isFavorite
             else -> true
@@ -104,91 +99,84 @@ fun ScannerScreen(
                 .fillMaxSize()
                 .padding(horizontal = 16.dp)
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Screen Header
-            Row(
+            // Screen Header & Wi-Fi Network Banner
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
             ) {
-                Column {
-                    Text(
-                        text = "Printer Discovery",
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Text(
-                        text = "Scan Wi-Fi network for IPP, AirPrint, Mopria & PC Print Servers",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = WifiPrimary.copy(alpha = 0.15f),
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Wifi, contentDescription = null, tint = WifiPrimary)
+                            }
+                        }
+                        Column {
+                            Text(
+                                text = networkInfo.ssid,
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                            )
+                            Text(
+                                text = "Subnet IP: ${networkInfo.localIp} • Signal: ${networkInfo.wifiStrengthDbm} dBm",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     IconButton(
                         onClick = { viewModel.setQrDialogVisible(true) },
                         modifier = Modifier.testTag("qr_scan_nav_button")
                     ) {
                         Icon(
                             imageVector = Icons.Default.QrCodeScanner,
-                            contentDescription = "QR Pair",
-                            tint = WifiPrimary
-                        )
-                    }
-
-                    IconButton(
-                        onClick = { viewModel.startDiscovery(context) },
-                        modifier = Modifier.testTag("rescan_printers_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Rescan",
+                            contentDescription = "QR Code Pair",
                             tint = WifiPrimary
                         )
                     }
                 }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Large Prominent "Scan for Printers" Button
+            Button(
+                onClick = { viewModel.startDiscovery(context) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .testTag("scan_for_printers_large_button"),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = WifiPrimary)
+            ) {
+                Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.White)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (isScanning) "Scanning Wi-Fi Network..." else "Scan for Printers",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = Color.White
+                )
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Search Bar
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { viewModel.setSearchQuery(it) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("printer_search_input"),
-                placeholder = { Text("Search printer name or IP address...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                shape = RoundedCornerShape(14.dp),
-                singleLine = true
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Filter Chips Row
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                val filters = listOf("All", "Direct IPP/RAW", "PC Server", "Favorites")
-                items(filters) { filter ->
-                    FilterChip(
-                        selected = activeFilter == filter,
-                        onClick = { viewModel.setFilter(filter) },
-                        label = { Text(filter) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = WifiPrimary,
-                            selectedLabelColor = Color.White
-                        )
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Scanning progress indicator
+            // Scanning Progress Indicator
             AnimatedVisibility(visible = isScanning) {
                 Card(
                     modifier = Modifier
@@ -203,7 +191,7 @@ fun ScannerScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "Probing LAN subnet (${scanProgress.first}/${scanProgress.second})...",
+                                text = "Probing local network protocols (${scanProgress.first}/${scanProgress.second})...",
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
@@ -218,9 +206,43 @@ fun ScannerScreen(
                 }
             }
 
+            // Search Bar
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { viewModel.setSearchQuery(it) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("printer_search_input"),
+                placeholder = { Text("Search brand, model or IP address...") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                shape = RoundedCornerShape(14.dp),
+                singleLine = true
+            )
+
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Discovered Printers List
+            // Filter Chips
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                val filters = listOf("All", "Direct IPP/AirPrint", "PC Server", "Favorites")
+                items(filters) { filter ->
+                    FilterChip(
+                        selected = activeFilter == filter,
+                        onClick = { viewModel.setFilter(filter) },
+                        label = { Text(filter) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = WifiPrimary,
+                            selectedLabelColor = Color.White
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Printer List or "No Printer Found" View
             if (filteredPrinters.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -228,36 +250,51 @@ fun ScannerScreen(
                         .weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Print,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(54.dp)
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "No printers found matching criteria",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Tap 'Add Manual IP' below or rescan network.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = { viewModel.setManualIpDialogVisible(true) },
-                            shape = RoundedCornerShape(12.dp)
+                        Column(
+                            modifier = Modifier.padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = null)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Add Manual Printer IP")
+                            Icon(
+                                imageVector = Icons.Default.Devices,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(54.dp)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "No Printer Found",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Tap 'Scan for Printers' above to auto detect printers on Wi-Fi.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Troubleshooting Steps
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "Troubleshooting Suggestions:",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = WifiPrimary
+                                )
+                                TroubleshootingItem("1. Ensure your phone and printer are on the SAME Wi-Fi network.")
+                                TroubleshootingItem("2. Verify printer power and Wi-Fi light is steady.")
+                                TroubleshootingItem("3. Ensure AP Isolation / Guest Mode is disabled on your Wi-Fi router.")
+                                TroubleshootingItem("4. Confirm AirPrint / mDNS / RAW Port 9100 is enabled in printer settings.")
+                            }
                         }
                     }
                 }
@@ -277,46 +314,39 @@ fun ScannerScreen(
                             onToggleFavorite = { viewModel.toggleFavorite(printer) }
                         )
                     }
-                    item { Spacer(modifier = Modifier.height(80.dp)) }
+                    item { Spacer(modifier = Modifier.height(24.dp)) }
                 }
             }
         }
-
-        // Floating Action Button for Manual IP
-        FloatingActionButton(
-            onClick = { viewModel.setManualIpDialogVisible(true) },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(20.dp)
-                .testTag("add_manual_ip_fab"),
-            containerColor = WifiPrimary,
-            contentColor = Color.White
-        ) {
-            Row(modifier = Modifier.padding(horizontal = 16.dp)) {
-                Icon(Icons.Default.Add, contentDescription = "Add IP")
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Add Manual IP", fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-
-    // Manual IP Entry Dialog
-    if (uiState.manualIpDialogVisible) {
-        ManualIpDialog(
-            onDismiss = { viewModel.setManualIpDialogVisible(false) },
-            onConfirm = { ip, port, name, proto ->
-                viewModel.addManualPrinter(ip, port, name, proto)
-            }
-        )
     }
 
     // QR Code Scanner / Pairing Helper Dialog
     if (uiState.qrScanDialogVisible) {
         QrPairingDialog(
             onDismiss = { viewModel.setQrDialogVisible(false) },
-            onQrCodeParsed = { qrCodeText ->
+            onQrCodeParsed = { qrCodeText: String ->
                 viewModel.handleQrScanResult(qrCodeText)
             }
+        )
+    }
+}
+
+@Composable
+private fun TroubleshootingItem(text: String) {
+    Row(
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Info,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(16.dp)
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -351,9 +381,9 @@ fun PrinterCardItem(
                     modifier = Modifier.weight(1f)
                 ) {
                     Surface(
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(12.dp),
                         color = if (printer.isPcServer) Color(0xFF0284C7) else WifiPrimary,
-                        modifier = Modifier.size(42.dp)
+                        modifier = Modifier.size(44.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
@@ -372,7 +402,7 @@ fun PrinterCardItem(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "IP: ${printer.ipAddress}:${printer.port} • ${printer.location}",
+                            text = "IP: ${printer.ipAddress}:${printer.port} • Protocol: ${printer.protocol}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -390,6 +420,7 @@ fun PrinterCardItem(
 
             Spacer(modifier = Modifier.height(10.dp))
 
+            // Details Badges
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -398,10 +429,10 @@ fun PrinterCardItem(
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = WifiPrimary.copy(alpha = 0.15f)
+                        color = WifiPrimary.copy(alpha = 0.12f)
                     ) {
                         Text(
-                            text = printer.protocol,
+                            text = "Paper: ${printer.paperSizesSupported}",
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = WifiPrimary)
                         )
@@ -430,112 +461,15 @@ fun PrinterCardItem(
                         contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 ) {
-                    Text(text = if (isSelected) "Active" else "Select")
+                    if (isSelected) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Connected")
+                    } else {
+                        Text("Connect")
+                    }
                 }
             }
         }
     }
-}
-
-@Composable
-fun ManualIpDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (ip: String, port: Int, name: String, protocol: String) -> Unit
-) {
-    var ipText by remember { mutableStateOf("192.168.1.") }
-    var portText by remember { mutableStateOf("9100") }
-    var nameText by remember { mutableStateOf("") }
-    var protocolText by remember { mutableStateOf("RAW Port 9100") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add Manual Printer IP") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = ipText,
-                    onValueChange = { ipText = it },
-                    label = { Text("IP Address") },
-                    placeholder = { Text("192.168.1.100") },
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = portText,
-                    onValueChange = { portText = it },
-                    label = { Text("Port Number") },
-                    placeholder = { Text("9100 (RAW) or 631 (IPP)") },
-                    singleLine = true
-                )
-                OutlinedTextField(
-                    value = nameText,
-                    onValueChange = { nameText = it },
-                    label = { Text("Printer Name (Optional)") },
-                    placeholder = { Text("My Printer") },
-                    singleLine = true
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val port = portText.toIntOrNull() ?: 9100
-                    onConfirm(ipText, port, nameText, protocolText)
-                },
-                enabled = ipText.isNotBlank()
-            ) {
-                Text("Add Printer")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
-    )
-}
-
-@Composable
-fun QrPairingDialog(
-    onDismiss: () -> Unit,
-    onQrCodeParsed: (String) -> Unit
-) {
-    var qrCodeInput by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(Icons.Default.QrCodeScanner, contentDescription = null, tint = WifiPrimary)
-                Text("QR Code Printer Pairing")
-            }
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = "Scan printer QR code or paste QR pairing payload below:",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                OutlinedTextField(
-                    value = qrCodeInput,
-                    onValueChange = { qrCodeInput = it },
-                    label = { Text("QR Code Payload / IP") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    onQrCodeParsed(qrCodeInput)
-                }
-            ) {
-                Text("Pair Printer")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
-    )
 }

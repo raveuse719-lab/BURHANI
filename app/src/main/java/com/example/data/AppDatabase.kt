@@ -17,7 +17,7 @@ import com.example.data.entity.PrinterEntity
         PrintJobEntity::class,
         AppSettingsEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -8,6 +8,8 @@ import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Scanner
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -25,20 +27,24 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.ui.screens.DocumentScannerScreen
 import com.example.ui.screens.FilePickerScreen
 import com.example.ui.screens.HistoryProfileScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.PcPrintServerScreen
 import com.example.ui.screens.PrintPreviewScreen
 import com.example.ui.screens.PrintSpoolerModal
-import com.example.ui.screens.ScannerScreen
+import com.example.ui.screens.PrinterDiscoveryScreen
+import com.example.ui.screens.SettingsScreen
 
 sealed class BottomNavItem(val route: String, val title: String, val icon: ImageVector) {
     object Home : BottomNavItem("home", "Dashboard", Icons.Default.Home)
     object Printers : BottomNavItem("printers", "Printers", Icons.Default.Devices)
+    object Scan : BottomNavItem("scan", "Scan", Icons.Default.Scanner)
     object Files : BottomNavItem("files", "Documents", Icons.Default.FolderOpen)
     object PcServer : BottomNavItem("pc_server", "PC Server", Icons.Default.Computer)
     object History : BottomNavItem("history", "History", Icons.Default.History)
+    object Settings : BottomNavItem("settings", "Settings", Icons.Default.Settings)
 }
 
 @Composable
@@ -53,14 +59,14 @@ fun MainNavigationContainer(
     val navItems = listOf(
         BottomNavItem.Home,
         BottomNavItem.Printers,
+        BottomNavItem.Scan,
         BottomNavItem.Files,
-        BottomNavItem.PcServer,
-        BottomNavItem.History
+        BottomNavItem.History,
+        BottomNavItem.Settings
     )
 
     Scaffold(
         bottomBar = {
-            // Only show bottom navigation on primary screens, not on detail screens like preview
             if (currentRoute != "preview") {
                 NavigationBar(
                     tonalElevation = 8.dp
@@ -115,7 +121,14 @@ fun MainNavigationContainer(
             }
 
             composable(BottomNavItem.Printers.route) {
-                ScannerScreen(
+                PrinterDiscoveryScreen(
+                    viewModel = viewModel,
+                    onNavigateToPreview = { navController.navigate("preview") }
+                )
+            }
+
+            composable(BottomNavItem.Scan.route) {
+                DocumentScannerScreen(
                     viewModel = viewModel,
                     onNavigateToPreview = { navController.navigate("preview") }
                 )
@@ -128,16 +141,22 @@ fun MainNavigationContainer(
                 )
             }
 
+            composable(BottomNavItem.History.route) {
+                HistoryProfileScreen(
+                    viewModel = viewModel
+                )
+            }
+
+            composable(BottomNavItem.Settings.route) {
+                SettingsScreen(
+                    viewModel = viewModel
+                )
+            }
+
             composable(BottomNavItem.PcServer.route) {
                 PcPrintServerScreen(
                     viewModel = viewModel,
                     onNavigateToPreview = { navController.navigate("preview") }
-                )
-            }
-
-            composable(BottomNavItem.History.route) {
-                HistoryProfileScreen(
-                    viewModel = viewModel
                 )
             }
 
@@ -149,7 +168,6 @@ fun MainNavigationContainer(
             }
         }
 
-        // Spooler Modal Dialog overlay
         if (uiState.showSpoolerModal) {
             PrintSpoolerModal(
                 spoolerProgress = uiState.spoolerProgress,
@@ -158,3 +176,4 @@ fun MainNavigationContainer(
         }
     }
 }
+
