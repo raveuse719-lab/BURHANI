@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 
+import com.example.util.SpeedTestEngine
+
 class WifiInspectorRepository(
     private val userProfileDao: UserProfileDao,
     private val trustedDeviceDao: TrustedDeviceDao,
@@ -166,63 +168,7 @@ class WifiInspectorRepository(
         }
     }
 
-    fun runSpeedTestFlow(): Flow<SpeedTestResult> = flow {
-        // Ping phase
-        emit(SpeedTestResult(testState = SpeedTestState.PINGING, progress = 0.1f))
-        val ping = NetworkUtils.pingHost("8.8.8.8", 3)
-        val pingMs = if (ping.isSuccess) ping.timeMs else 18L
-        val jitterMs = 3L
-
-        delay(800)
-
-        // Download phase
-        var currentDown = 12f
-        for (i in 1..10) {
-            currentDown += (15f + (Math.random() * 25).toFloat())
-            val prog = 0.1f + (i.toFloat() / 10f) * 0.45f
-            emit(
-                SpeedTestResult(
-                    downloadMbps = currentDown.coerceAtMost(248.5f),
-                    pingMs = pingMs,
-                    jitterMs = jitterMs,
-                    testState = SpeedTestState.DOWNLOADING,
-                    progress = prog
-                )
-            )
-            delay(250)
-        }
-
-        val finalDown = 248.5f
-
-        // Upload phase
-        var currentUp = 5f
-        for (i in 1..10) {
-            currentUp += (5f + (Math.random() * 12).toFloat())
-            val prog = 0.55f + (i.toFloat() / 10f) * 0.45f
-            emit(
-                SpeedTestResult(
-                    downloadMbps = finalDown,
-                    uploadMbps = currentUp.coerceAtMost(85.2f),
-                    pingMs = pingMs,
-                    jitterMs = jitterMs,
-                    testState = SpeedTestState.UPLOADING,
-                    progress = prog
-                )
-            )
-            delay(250)
-        }
-
-        val finalUp = 85.2f
-
-        emit(
-            SpeedTestResult(
-                downloadMbps = finalDown,
-                uploadMbps = finalUp,
-                pingMs = pingMs,
-                jitterMs = jitterMs,
-                testState = SpeedTestState.COMPLETED,
-                progress = 1.0f
-            )
-        )
+    fun runSpeedTestFlow(): Flow<SpeedTestResult> {
+        return SpeedTestEngine.runSpeedTest()
     }
 }

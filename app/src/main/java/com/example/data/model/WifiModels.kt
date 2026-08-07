@@ -79,7 +79,7 @@ data class PingResult(
 )
 
 enum class SpeedTestState {
-    IDLE, PINGING, DOWNLOADING, UPLOADING, COMPLETED, ERROR
+    IDLE, SELECTING_SERVER, PINGING, DOWNLOADING, UPLOADING, COMPLETED, ERROR
 }
 
 data class SpeedTestResult(
@@ -87,6 +87,10 @@ data class SpeedTestResult(
     val uploadMbps: Float = 0f,
     val pingMs: Long = 0L,
     val jitterMs: Long = 0L,
+    val packetLossPercent: Float = 0f,
+    val serverName: String = "",
+    val serverLocation: String = "",
+    val errorMessage: String? = null,
     val testState: SpeedTestState = SpeedTestState.IDLE,
     val progress: Float = 0f // 0.0 to 1.0
 )

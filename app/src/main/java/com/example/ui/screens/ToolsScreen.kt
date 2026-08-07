@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Dns
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Router
 import androidx.compose.material.icons.filled.Speed
@@ -62,6 +63,7 @@ import com.example.data.model.PingResult
 import com.example.data.model.SpeedTestResult
 import com.example.data.model.SpeedTestState
 import com.example.ui.WifiViewModel
+import com.example.ui.theme.WifiAlertRed
 import com.example.ui.theme.WifiPrimary
 import com.example.ui.theme.WifiSecondary
 import com.example.ui.theme.WifiSuccessGreen
@@ -171,6 +173,32 @@ fun SpeedTestTab(
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
 
+                    if (speedTestResult.serverName.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = null,
+                                    tint = WifiPrimary,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "${speedTestResult.serverName} • ${speedTestResult.serverLocation}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Speed Test Animated Arc Gauge
@@ -219,6 +247,7 @@ fun SpeedTestTab(
                     Text(
                         text = when (speedTestResult.testState) {
                             SpeedTestState.IDLE -> "Tap start to test speed"
+                            SpeedTestState.SELECTING_SERVER -> "Selecting nearest low-latency server..."
                             SpeedTestState.PINGING -> "Measuring ping latency & jitter..."
                             SpeedTestState.DOWNLOADING -> "Testing Download Speed..."
                             SpeedTestState.UPLOADING -> "Testing Upload Speed..."
@@ -226,48 +255,90 @@ fun SpeedTestTab(
                             SpeedTestState.ERROR -> "Test Failed"
                         },
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = if (speedTestResult.testState == SpeedTestState.ERROR) WifiAlertRed else MaterialTheme.colorScheme.onSurface
                     )
+
+                    if (speedTestResult.testState == SpeedTestState.ERROR && !speedTestResult.errorMessage.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = speedTestResult.errorMessage ?: "Speed test failed",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = WifiAlertRed
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Row(
+                    // Detailed Metrics Grid: DOWNLOAD, UPLOAD, PING, JITTER, PACKET LOSS
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("DOWNLOAD", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(
-                                text = "${String.format("%.1f", animatedDownSpeed)} Mbps",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = WifiPrimary
-                            )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("DOWNLOAD", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    text = "${String.format("%.1f", animatedDownSpeed)} Mbps",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = WifiPrimary
+                                )
+                            }
+
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("UPLOAD", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    text = "${String.format("%.1f", animatedUpSpeed)} Mbps",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = WifiSecondary
+                                )
+                            }
                         }
 
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("UPLOAD", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(
-                                text = "${String.format("%.1f", animatedUpSpeed)} Mbps",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = WifiSecondary
-                            )
-                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("PING", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    text = "${speedTestResult.pingMs} ms",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = WifiSuccessGreen
+                                )
+                            }
 
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("PING", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(
-                                text = "${speedTestResult.pingMs} ms",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = WifiSuccessGreen
-                            )
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("JITTER", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    text = "${speedTestResult.jitterMs} ms",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("LOSS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    text = "${String.format("%.1f", speedTestResult.packetLossPercent)} %",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = if (speedTestResult.packetLossPercent > 0f) WifiAlertRed else WifiSuccessGreen
+                                )
+                            }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(20.dp))
 
+                    val canStartTest = speedTestResult.testState == SpeedTestState.IDLE ||
+                            speedTestResult.testState == SpeedTestState.COMPLETED ||
+                            speedTestResult.testState == SpeedTestState.ERROR
+
                     Button(
                         onClick = onStartSpeedTest,
-                        enabled = speedTestResult.testState == SpeedTestState.IDLE || speedTestResult.testState == SpeedTestState.COMPLETED,
+                        enabled = canStartTest,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp)
@@ -276,7 +347,7 @@ fun SpeedTestTab(
                     ) {
                         Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Start Speed Test")
+                        Text(if (speedTestResult.testState == SpeedTestState.ERROR) "Retry Speed Test" else "Start Speed Test")
                     }
                 }
             }
