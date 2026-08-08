@@ -155,21 +155,63 @@ object AndroidSystemPrintEngine {
         var bitmap: Bitmap? = null
         val uriString = file.uriString
 
-        if (!uriString.isNull_or_empty_or_blank()) {
-            try {
-                val uri = Uri.parse(uriString)
-                val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
-                if (inputStream != null) {
-                    bitmap = BitmapFactory.decodeStream(inputStream)
-                    inputStream.close()
+        val isPdf = file.type == "PDF" || file.name.endsWith(".pdf", ignoreCase = true) || (uriString?.endsWith(".pdf", ignoreCase = true) == true)
+
+        if (!uriString.isNullOrBlank() && uriString != "null") {
+            if (isPdf) {
+                try {
+                    var pfd: ParcelFileDescriptor? = null
+                    if (uriString.startsWith("content://") || uriString.startsWith("file://")) {
+                        pfd = context.contentResolver.openFileDescriptor(Uri.parse(uriString), "r")
+                    } else if (uriString.startsWith("/")) {
+                        val f = java.io.File(uriString)
+                        if (f.exists()) {
+                            pfd = ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY)
+                        }
+                    }
+                    if (pfd != null) {
+                        val pdfRenderer = android.graphics.pdf.PdfRenderer(pfd)
+                        if (pageIndex < pdfRenderer.pageCount) {
+                            val pdfPage = pdfRenderer.openPage(pageIndex)
+                            val renderW = (canvas.width * 2).coerceAtLeast(1200)
+                            val renderH = (canvas.height * 2).coerceAtLeast(1600)
+                            val pageBitmap = Bitmap.createBitmap(renderW, renderH, Bitmap.Config.ARGB_8888)
+                            pageBitmap.eraseColor(Color.WHITE)
+                            pdfPage.render(pageBitmap, null, null, android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
+                            pdfPage.close()
+                            bitmap = pageBitmap
+                        }
+                        pdfRenderer.close()
+                        pfd.close()
+                    }
+                } catch (e: Exception) {
+                    Log.e("SystemPrintEngine", "Error rendering PDF page $pageIndex for $uriString", e)
                 }
-            } catch (e: Exception) {
-                Log.e("SystemPrintEngine", "Could not open Uri bitmap for $uriString", e)
+            }
+
+            if (bitmap == null) {
+                try {
+                    var inputStream: InputStream? = null
+                    if (uriString.startsWith("content://") || uriString.startsWith("file://") || uriString.startsWith("android.resource://")) {
+                        inputStream = context.contentResolver.openInputStream(Uri.parse(uriString))
+                    } else if (uriString.startsWith("/")) {
+                        val f = java.io.File(uriString)
+                        if (f.exists()) {
+                            inputStream = java.io.FileInputStream(f)
+                        }
+                    }
+                    if (inputStream != null) {
+                        bitmap = BitmapFactory.decodeStream(inputStream)
+                        inputStream.close()
+                    }
+                } catch (e: Exception) {
+                    Log.e("SystemPrintEngine", "Could not open Uri bitmap for $uriString", e)
+                }
             }
         }
 
         if (bitmap != null) {
-            val margin = 16f
+            val margin = 20f
             val destRect = RectF(margin, margin, width - margin, height - margin)
 
             val srcW = bitmap.width.toFloat()
@@ -200,32 +242,44 @@ object AndroidSystemPrintEngine {
 
             canvas.drawBitmap(bitmap, null, drawRect, paint)
         } else {
-            val titlePaint = Paint().apply {
+            val margin = 40f
+            val headerPaint = Paint().apply {
                 isAntiAlias = true
                 color = Color.BLACK
-                textSize = 24f
+                textSize = 28f
                 isFakeBoldText = true
             }
-
-            val textPaint = Paint().apply {
+            val subHeaderPaint = Paint().apply {
                 isAntiAlias = true
-                color = if (settings.colorMode == "Black & White") Color.BLACK else Color.DKGRAY
+                color = Color.DKGRAY
+                textSize = 18f
+            }
+            val bodyPaint = Paint().apply {
+                isAntiAlias = true
+                color = if (settings.colorMode == "Black & White") Color.BLACK else Color.rgb(30, 41, 59)
                 textSize = 16f
             }
+            val linePaint = Paint().apply {
+                color = Color.LTGRAY
+                strokeWidth = 2f
+            }
 
-            var currentY = 50f
-            canvas.drawText(file.name, 40f, currentY, titlePaint)
-            currentY += 35f
-
-            paint.color = Color.LTGRAY
-            paint.strokeWidth = 2f
-            canvas.drawLine(40f, currentY, width - 40f, currentY, paint)
+            var currentY = margin + 40f
+            canvas.drawText(file.name, margin, currentY, headerPaint)
             currentY += 30f
 
-            val lines = DocumentPreviewEngine.getPagePreviewLines(file, pageIndex)
-            lines.forEach { line ->
-                canvas.drawText(line, 40f, currentY, textPaint)
-                currentY += 26f
+            canvas.drawText("Document Type: ${file.type} • Page ${pageIndex + 1} of ${file.pagesCount}", margin, currentY, subHeaderPaint)
+            currentY += 25f
+
+            canvas.drawLine(margin, currentY, width - margin, currentY, linePaint)
+            currentY += 35f
+
+            val textLines = DocumentPreviewEngine.getPagePreviewLines(file, pageIndex)
+            textLines.forEach { line ->
+                if (currentY + 30f < height - margin) {
+                    canvas.drawText(line, margin, currentY, bodyPaint)
+                    currentY += 28f
+                }
             }
         }
     }

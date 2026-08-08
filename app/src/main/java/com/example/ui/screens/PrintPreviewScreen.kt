@@ -148,11 +148,15 @@ fun PrintPreviewScreen(
                     .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Primary System Print Button (Triggers Android PrintManager Spooler)
+                // Primary System Print Button (Triggers Android Native System Print Spooler / AirPrint Drivers)
                 Button(
                     onClick = {
+                        android.widget.Toast.makeText(
+                            context,
+                            "Opening System Print Service...",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
                         AndroidSystemPrintEngine.printViaSystemSpooler(context, file, settings)
-                        viewModel.triggerPrint()
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -169,13 +173,13 @@ fun PrintPreviewScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "PRINT NOW (${settings.copies} Copy • ${settings.paperSize})",
+                        text = "DIRECT SYSTEM PRINT (${settings.copies} Copy • ${settings.paperSize})",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = Color.White
                     )
                 }
 
-                // Secondary Wi-Fi Network RAW Print Button
+                // Secondary Wi-Fi IP Socket RAW Transmission Button
                 OutlinedButton(
                     onClick = { viewModel.triggerPrint() },
                     modifier = Modifier
@@ -192,7 +196,7 @@ fun PrintPreviewScreen(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Wi-Fi IP Socket Print (${activePrinter?.ipAddress ?: "Direct IP"})",
+                        text = "Direct Wi-Fi IP Print (${activePrinter?.ipAddress ?: "Auto-Select IP"})",
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
                     )
                 }
