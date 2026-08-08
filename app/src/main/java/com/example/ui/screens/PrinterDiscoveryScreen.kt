@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Devices
@@ -28,9 +29,11 @@ import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.outlined.StarOutline
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -41,13 +44,20 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -78,6 +88,8 @@ fun PrinterDiscoveryScreen(
     val scanProgress = uiState.scanProgress
     val activePrinter = uiState.activePrinter
     val networkInfo = uiState.networkInfo
+
+    var showManualAddDialog by remember { mutableStateOf(false) }
 
     // Filter printers
     val filteredPrinters = allPrinters.filter { p ->
@@ -177,10 +189,63 @@ fun PrinterDiscoveryScreen(
                 Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.White)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (isScanning) "Scanning Wi-Fi Network..." else "Scan for Printers",
+                    text = if (isScanning) "Scanning Wi-Fi Network..." else "Scan Wi-Fi Printers",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = Color.White
                 )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Secondary Helper Buttons: Add IP Printer & Open System Print Settings
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { showManualAddDialog = true },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .testTag("add_manual_ip_printer_button"),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Add IP Printer",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        try {
+                            val intent = Intent(Settings.ACTION_PRINT_SETTINGS)
+                            context.startActivity(intent)
+                        } catch (_: Exception) {}
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .testTag("open_system_print_settings_button"),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "System Drivers",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -338,6 +403,109 @@ fun PrinterDiscoveryScreen(
             }
         )
     }
+
+    // Manual Add IP Printer Dialog
+    if (showManualAddDialog) {
+        AddManualPrinterDialog(
+            defaultSubnetIp = networkInfo.localIp,
+            onDismiss = { showManualAddDialog = false },
+            onAddPrinter = { ip, port, name, proto ->
+                viewModel.addManualPrinter(ip, port, name, proto)
+                showManualAddDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun AddManualPrinterDialog(
+    defaultSubnetIp: String,
+    onDismiss: () -> Unit,
+    onAddPrinter: (ip: String, port: Int, name: String, proto: String) -> Unit
+) {
+    val suggestedPrefix = if (defaultSubnetIp.contains(".")) defaultSubnetIp.substringBeforeLast(".") + "." else "192.168.1."
+    var ipAddress by remember { mutableStateOf(suggestedPrefix) }
+    var printerName by remember { mutableStateOf("Wi-Fi Network Printer") }
+    var portText by remember { mutableStateOf("9100") }
+    var selectedProtocol by remember { mutableStateOf("RAW Port 9100") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Install IP Wi-Fi Printer",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "Enter the IP address of the printer connected to your Wi-Fi router:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                OutlinedTextField(
+                    value = ipAddress,
+                    onValueChange = { ipAddress = it },
+                    label = { Text("Printer IP Address") },
+                    placeholder = { Text("e.g. 192.168.1.100") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                OutlinedTextField(
+                    value = printerName,
+                    onValueChange = { printerName = it },
+                    label = { Text("Printer Display Name") },
+                    placeholder = { Text("e.g. HP / Canon / Epson Smart Tank") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = portText,
+                        onValueChange = { portText = it },
+                        label = { Text("Port") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = selectedProtocol,
+                        onValueChange = { selectedProtocol = it },
+                        label = { Text("Protocol") },
+                        singleLine = true,
+                        modifier = Modifier.weight(2f),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val portInt = portText.toIntOrNull() ?: 9100
+                    if (ipAddress.isNotBlank()) {
+                        onAddPrinter(ipAddress.trim(), portInt, printerName.trim(), selectedProtocol)
+                    }
+                },
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = WifiPrimary)
+            ) {
+                Text("Install & Connect")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable
